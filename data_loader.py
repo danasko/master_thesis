@@ -2,7 +2,9 @@ import h5py
 import numpy as np
 import cv2
 from sklearn.utils import shuffle
+from sklearn.preprocessing import scale
 import codecs, json
+import pose_visualizer
 
 joint_id_to_name = {
     0: 'Head',
@@ -32,7 +34,7 @@ class data_loader:
 
         for i in range(self.depth_maps['data'].shape[0]):
             if self.labels['is_valid'][i]:
-                depth_map = self.depth_maps['data'][i].astype(np.float32)
+                depth_map = self.depth_maps['data'][i].astype(np.float64)
                 joints = self.labels['image_coordinates'][i]
                 img = self.depth_map_to_image(depth_map, joints)
                 cv2.imshow("Image", img)
@@ -51,58 +53,53 @@ class data_loader:
             cv2.putText(img, joint_id_to_name[j], (x + 5, y + 5), cv2.FONT_HERSHEY_SIMPLEX, 0.3, (255, 255, 255))
         return img
 
-    def get_data(self, w=None, h=None, test=False):
+    def get_data(self, size=None):
         x = []
         y = []
-        vis = []  # img coords fot visualization
-        if test:
-            print('Unpacking test dataset...')
-        else:
-            print('Unpacking dataset...')
+
+        print('Unpacking dataset...')
+
         for i in range(self.depth_maps['data'].shape[0]):
-            if test or self.labels['is_valid'][i]:
-                depth_map = self.depth_maps['data'][i].astype(np.float32)
-                img_coords = self.labels['image_coordinates'][i]
-                if not test:
-                    joints = self.labels['real_world_coordinates'][i]
-                    # normalize joint coords - zero mean, one standard deviation
-                    j = np.asarray(joints, dtype=np.float32)
+            if self.labels['is_valid'][i]:
+                # joint locations
+                pose = self.labels['real_world_coordinates'][i]
+                pose = np.asarray(pose, dtype=np.float64)
 
-                    s = j.std()
+                ca = pose[1]  # neck
+                cb = pose[8]  # torso
+                cjnt = (ca + cb) * 0.5
+                pose = pose - cjnt  # centered
 
-                    jx = (j[:, 0] - j[:, 0].mean()) / s  # j[:, 0].std()
-                    jy = (j[:, 1] - j[:, 1].mean()) / s  # j[:, 1].std()
-                    jz = (j[:, 2] - j[:, 2].mean()) / s  # j[:, 2].std()
+                y.append(pose)
 
-                    j[:, 0] = jx
-                    j[:, 1] = jy
-                    j[:, 2] = jz
+                # depth map
+                depth_map = self.depth_maps['data'][i].astype(np.float64)
+                if size is not None:
+                    depth_map = depth_map[:, 41:281]
+                    depth_map = cv2.resize(depth_map, (size, size), interpolation=cv2.INTER_NEAREST)
+                # img = cv2.normalize(depth_map, depth_map, 0, 1, cv2.NORM_MINMAX)
+                img = rescale(depth_map, 0, 1)
+                img = np.array(img, dtype=np.float64)  # depth values scaled to range [0,1]
 
-                    # j = (j-j.mean()) / j.std()
-
-                    c = j[8]  # torso
-                    j = j-c  # centered
-
-                    y.append(j)
-
-                if w is not None and h is not None:
-                    depth_map = cv2.resize(depth_map, (w, h))
-                img = cv2.normalize(depth_map, depth_map, 0, 1, cv2.NORM_MINMAX)
-                img = np.array(img, dtype=np.float32)  # depth values scaled to range [0,1]
+                # pose_visualizer.visualize_pose_2D(j, isnumpy=True, pause=False)
                 # img = np.array(img * 255, dtype=np.uint8)  # for visualization
                 # img = cv2.cvtColor(img, cv2.COLOR_GRAY2RGB)
                 # img = cv2.applyColorMap(img, cv2.COLORMAP_OCEAN)
 
                 # cv2.imshow("Image", img)
                 # cv2.waitKey(0)
-                vis.append(img_coords)
                 x.append(img)
 
-        vis = np.array(vis)
         x = np.array(x)
         y = np.array(y)
+
         # x, y = shuffle(x, y, random_state=42)  # shuffle data
-        return [x, y, vis]
+
+        return [x, y]
+
+
+def rescale(x, lw, up):
+    return lw + ((x - np.min(x)) / (np.max(x) - np.min(x))) * (up - lw)
 
 
 if __name__ == '__main__':

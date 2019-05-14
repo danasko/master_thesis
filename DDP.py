@@ -1,23 +1,31 @@
 from keras.models import Sequential, load_model, Model
+from keras.applications import vgg16
 from keras.layers.core import Flatten, Dense, Dropout, Reshape
+from keras.layers import Input
 from keras.layers.convolutional import Conv2D, MaxPooling2D, ZeroPadding2D
-from keras.layers import dot, BatchNormalization
+from keras.layers import dot, BatchNormalization, Activation
 from keras.optimizers import SGD, Adagrad, Adam, rmsprop
 from keras.backend.tensorflow_backend import set_session
 from keras.layers.advanced_activations import LeakyReLU
-from keras import regularizers
+from keras import regularizers, models
 from keras.utils import plot_model
 from keras.utils.generic_utils import get_custom_objects
 import keras.callbacks
 import tensorflow as tf
 import numpy as np
 import keras.backend as Kb
+from scipy.io import loadmat
+from tensorflow import set_random_seed
+from keras_contrib.optimizers import padam
+from keras_contrib.callbacks import DeadReluDetector
+
 from data_loader import data_loader
 import cv2
 from sklearn.utils import shuffle
-from sklearn.preprocessing import StandardScaler
 import pose_visualizer
 import k_means_clustering
+
+meanpose, varpose = None, None
 
 prototypes_file = 'data/DDP/prototype_poses.npy'
 depth_maps_file = 'data/DDP/depth_maps.npy'
@@ -25,11 +33,14 @@ poses_file = 'data/DDP/poses.npy'
 prototypes_vis_data_file = 'data/DDP/prototypes_vis_data.npy'
 validation_samples_x_file = 'data/DDP/validation_samples_x.npy'
 validation_samples_y_file = 'data/DDP/validation_samples_y.npy'
-eval_data_x_file = 'data/DDP/eval_data_x.npy'
-eval_data_y_file = 'data/DDP/eval_data_y.npy'
 test_data_x_file = 'data/DDP/test_data_x.npy'
-predictions_file = 'data/DDP/predictions_leakrelu2.npy'
-C = None  # set of K prototypes (after clustering) - matrix
+test_data_y_file = 'data/DDP/test_data_y.npy'
+# mean_depth_file = 'data/DDP/mean_depth.npy'
+
+# predictions_file = 'data/DDP/predictions_leak_128b_alpha0_3.npy'
+# predictions_file2 = 'data/DDP/predictions_leak_dropouteach_evenlowestalpha.npy'
+# C = None  # set of K prototypes (after clustering) - matrix
+input_size = 100
 batch_size = 64  # 1, 7, 257, 1799
 
 # Hyperparameters:
@@ -39,58 +50,173 @@ alpha = 0.08  # ITOP dataset 0.08
 J = 15  # no. of joints ITOP dataset
 # J = 18  # no. of joints UBC3V dataset
 K = 70  # no. of prototype poses
-o = 1  # ITOP dataset
+o = 1.  # ITOP dataset
 # o = 0.8  # UBC3V dataset
+thresh = 0.1  # for mean average precision (in meters)
 
 # input depth maps size
 # ITOP
 width = 320
 height = 240
 
-
 # UBC3V
 # width = 512
 # height = 424
+
+# Set random seed to make results reproducable
+np.random.seed(21)
+set_random_seed(21)
+
+
+def vgg_custom():
+    img_input = Input(shape=(input_size, input_size, 1))
+    # Block 1
+    x = Conv2D(64, (3, 3),
+               activation='relu',
+               padding='same',
+               name='block1_conv1')(img_input)
+    x = Conv2D(64, (3, 3),
+               activation='relu',
+               padding='same',
+               name='block1_conv2')(x)
+    x = MaxPooling2D((2, 2), strides=(2, 2), name='block1_pool')(x)
+
+    # Block 2
+    x = Conv2D(128, (3, 3),
+               activation='relu',
+               padding='same',
+               name='block2_conv1')(x)
+    x = Conv2D(128, (3, 3),
+               activation='relu',
+               padding='same',
+               name='block2_conv2')(x)
+    x = MaxPooling2D((2, 2), strides=(2, 2), name='block2_pool')(x)
+
+    # Block 3
+    x = Conv2D(256, (3, 3),
+               activation='relu',
+               padding='same',
+               name='block3_conv1')(x)
+    x = Conv2D(256, (3, 3),
+               activation='relu',
+               padding='same',
+               name='block3_conv2')(x)
+    x = Conv2D(256, (3, 3),
+               activation='relu',
+               padding='same',
+               name='block3_conv3')(x)
+    x = MaxPooling2D((2, 2), strides=(2, 2), name='block3_pool')(x)
+
+    # Block 4
+    x = Conv2D(512, (3, 3),
+               activation='relu',
+               padding='same',
+               name='block4_conv1')(x)
+    x = Conv2D(512, (3, 3),
+               activation='relu',
+               padding='same',
+               name='block4_conv2')(x)
+    x = Conv2D(512, (3, 3),
+               activation='relu',
+               padding='same',
+               name='block4_conv3')(x)
+    x = MaxPooling2D((2, 2), strides=(2, 2), name='block4_pool')(x)
+
+    # Block 5
+    x = Conv2D(512, (3, 3),
+               activation='relu',
+               padding='same',
+               name='block5_conv1')(x)
+    x = Conv2D(512, (3, 3),
+               activation='relu',
+               padding='same',
+               name='block5_conv2')(x)
+    x = Conv2D(512, (3, 3),
+               activation='relu',
+               padding='same',
+               name='block5_conv3')(x)
+    x = MaxPooling2D((2, 2), strides=(2, 2), name='block5_pool')(x)
+
+    # Classification block
+    x = Flatten(name='flatten')(x)
+    x = Dense(4096, activation='relu', name='fc1')(x)
+    x = Dense(4096, activation='relu', name='fc2')(x)
+    x = Dense(K, activation='linear', name='predictions')(x)
+
+    return models.Model(img_input, x, name='vgg_custom')
 
 
 def DPP(weights=None):
     model = Sequential()
     # model.add(ZeroPadding2D((1, 1), )
-    glorot = keras.initializers.glorot_normal(seed=1024)
-    model.add(Conv2D(96, (94, 94), input_shape=(100, 100, 1), kernel_initializer=glorot)) # activation='relu'
-    # model.add(BatchNormalization(axis=-1))
-    model.add(LeakyReLU(alpha=0.3))
-    model.add(MaxPooling2D((2, 2)))  # out: 7x7x96
+    # glorot = keras.initializers.glorot_normal(seed=1)  # 1024
+    model.add(Conv2D(filters=96, kernel_size=(7, 7), strides=(1, 1), input_shape=(input_size, input_size, 1),
+                     kernel_initializer='glorot_normal', data_format="channels_last",
+                     bias_initializer='zeros', activation='relu'))  # activation='relu'
+    # random_normal(0,1)  #bias_init='ones' # TODO
 
-    model.add(ZeroPadding2D((1, 1)))
-    model.add(Conv2D(192, (1, 1)))
-    model.add(LeakyReLU(alpha=0.3))
-    model.add(MaxPooling2D((2, 2)))  # out: 4x4x192
-
-    model.add(ZeroPadding2D((1, 1)))
-    model.add(Conv2D(512, (2, 2)))
-    model.add(LeakyReLU(alpha=0.3))
-    model.add(MaxPooling2D((2, 2)))  # out: 3x3x512
-
-    model.add(ZeroPadding2D((1, 1)))
-    model.add(Conv2D(1024, (2, 2)))
-    model.add(LeakyReLU(alpha=0.3))
-
+    # model.add(LeakyReLU(alpha=0.3))  # 0.3
+    # model.add(BatchNormalization(momentum=0.9))
+    model.add(MaxPooling2D((2, 2), strides=(2, 2)))
+    # model.add(Dropout(0.2))
     # model.add(ZeroPadding2D((1, 1)))
-    model.add(Conv2D(2048, (1, 1)))
-    model.add(LeakyReLU(alpha=0.3))
 
-    model.add(Flatten())
-    model.add(Dense(1024))
-    model.add(LeakyReLU(alpha=0.3))
-    model.add(Dropout(0.2))  # 0.2
-    model.add(Dense(256, name='second_dense'))
-    model.add(LeakyReLU(alpha=0.3))
+    model.add(
+        Conv2D(filters=192, kernel_size=(5, 5), strides=(2, 2), kernel_initializer='glorot_normal',
+               bias_initializer='zeros', activation='relu'))  # strides=(2,2)
+    # model.add(LeakyReLU(alpha=0.3))
+    # model.add(BatchNormalization(momentum=0.9))
+    model.add(MaxPooling2D((2, 2), strides=(2, 2)))
+    # model.add(Dropout(0.2))
+    # model.add(ZeroPadding2D((1, 1)))
 
+    model.add(
+        Conv2D(filters=512, kernel_size=(3, 3), strides=(1, 1), kernel_initializer='glorot_normal',
+               bias_initializer='zeros', activation='relu'))
+    # model.add(BatchNormalization(momentum=0.9))
+    # model.add(LeakyReLU(alpha=0.3))
+    model.add(MaxPooling2D((2, 2), strides=(2, 2)))
+    # model.add(Dropout(0.2))
+    # model.add(ZeroPadding2D((1, 1)))
+
+    # 6th CONV block
+    # model.add(
+    #     Conv2D(filters=512, kernel_size=(3, 3), strides=(1, 1), kernel_initializer=keras.initializers.glorot_normal(),
+    #            bias_initializer='zeros', activation='relu'))
+    # # model.add(BatchNormalization(momentum=0.9))
+    # # model.add(LeakyReLU(alpha=0.3))
+    # model.add(MaxPooling2D((2, 2), strides=(2, 2)))
+    ####
+
+    model.add(
+        Conv2D(filters=1024, kernel_size=(2, 2), strides=(2, 2), kernel_initializer='glorot_normal',
+               bias_initializer='zeros', activation='relu'))
+    # model.add(BatchNormalization(momentum=0.9))
+    # model.add(LeakyReLU(alpha=0.3))
+    # model.add(Dropout(0.2))
+    # model.add(ZeroPadding2D((1, 1)))
+
+    model.add(
+        Conv2D(filters=2048, kernel_size=(2, 2), strides=(1, 1), kernel_initializer='glorot_normal',
+               bias_initializer='zeros',
+               activation='relu'))  # kernel_regularizer=keras.regularizers.l1(0.001)
+
+    # model.add(BatchNormalization(momentum=0.9))
+    # model.add(Activation('relu'))
+    # model.add(LeakyReLU(alpha=0.3))
     # model.add(Dropout(0.2))
 
-    model.add(Dense(K, name='output'))
-    model.add(LeakyReLU(alpha=0.3))
+    model.add(Flatten())
+    # model.add(keras.layers.GlobalMaxPooling2D())  # instead of flatten
+    model.add(Dense(1024, kernel_initializer='glorot_normal', bias_initializer='zeros'))
+    # model.add(BatchNormalization(momentum=0.9))
+    model.add(Dropout(0.2))  # 0.5
+
+    model.add(Dense(256, kernel_initializer='glorot_normal',
+                    bias_initializer='zeros'))  # kernel_regularizer=keras.regularizers.l2()
+    # model.add(BatchNormalization(momentum=0.9))
+
+    model.add(Dense(K, name='output', kernel_initializer='glorot_normal', bias_initializer='zeros'))
 
     if weights:
         model.load_weights(weights)
@@ -102,40 +228,64 @@ def loss_function(y_true, y_pred):
     # print(y_pred.shape)  # (batch_size, K)
     # print(y_true.shape)  # (15, batch_size, 3) ..should be.. but is actually (?, ?)
 
-    y = Kb.transpose(y_pred)[0]  # (batch_size,)
-    y = Kb.expand_dims(y, -1)  # (batch_size, 1)
+    # y = Kb.transpose(y_pred)[0]  # (batch_size,)
+    # y = Kb.expand_dims(y, -1)  # (batch_size, 1)
 
-    p_e = Kb.constant(1, shape=(K, 1, J * 3))
+    # p_e = Kb.constant(1, shape=(K, 1, J * 3))
+    #
+    # p = Kb.dot(y, p_e)  # (batch_size, K, J*3)
+    # p = Reshape(target_shape=(K, J, 3))(p)
+    # p = Kb.permute_dimensions(p, (0, 2, 1, 3))  # (batch_size, J, K, 3)
 
-    p = Kb.dot(y, p_e)  # (batch_size, K, J*3)
-    p = Reshape(target_shape=(K, J, 3))(p)
-    p = Kb.permute_dimensions(p, (0, 2, 1, 3))  # (batch_size, J, K, 3)
-    # p = Kb.constant(1, shape=(batch_size, J, K, 3))
+    # tc = Kb.ones_like(p) * C  # c_scaled
 
-    tc = Kb.ones_like(p) * C
+    # tc = Kb.permute_dimensions(tc, (0, 1, 3, 2))
+    # tc = Reshape(target_shape=(J * 3, K))(tc)
 
-    tc = Kb.permute_dimensions(tc, (0, 1, 3, 2))
-    tc = Reshape(target_shape=(J * 3, K))(tc)
+    # c_pred = Kb.batch_dot(y_pred, tc, axes=[1, 2])  # p^
 
-    c_pred = Kb.batch_dot(y_pred, tc, axes=[1, 2])  # p^
+    # y_pred = rescale(y_pred, -1, 1) # TODO check rescaling ( after ? )
+    # fixed
 
-    # c_pred = Reshape(target_shape=(15, 3))(c_pred)  # expand last dimension back into two -> 15, 3
-    y_true = Reshape(target_shape=(45,))(y_true)  # flatten last two dimensions (15,3) into one
+    y = Kb.stack([y_pred] * (J * 3), axis=-1)  # (batch, K, J*3)
+    yt = Kb.permute_dimensions(y, [0, 2, 1])  # same weight for each joint in particular prototype in column
 
-    p1 = (1 - alpha) * res_loss(c_pred, y_true)
-    p2 = alpha * L1(y_pred)
+    # normalize
+    tci = Kb.transpose(Kb.transpose(tc) - meanpose)
+    tci = Kb.transpose(Kb.transpose(tci) / np.sqrt(varpose))
+    #######
 
-    return p1 + p2
+    c_pred = yt * tci  # (batch_size, J*3, K) # tci !!
+    c_pred = Kb.sum(c_pred, axis=-1)
+
+    # back to real center and scale
+    c_pred = c_pred * np.sqrt(varpose)
+    c_pred = c_pred + meanpose
+    # #######
+
+    # # c_pred = Reshape(target_shape=(J, 3))(c_pred)  # expand last dimension back into two -> 15, 3
+    y_true = Reshape(target_shape=(J * 3,))(y_true)  # flatten last two dimensions (15,3) into one
+
+    p1 = (1 - alpha) * res_loss(c_pred, y_true)  # (batch_size,)
+    reg_term = alpha * L2(y_pred)  # (batch_size,)
+    return p1 + reg_term
 
 
-def L1(v):  # L1 form of ndarray v
+def L1(v):  # L1 form of ndarray v  # v of shape (batch_size, 70)
     return Kb.sum(Kb.abs(v), axis=-1)
 
 
+def L2(v):
+    return Kb.sqrt(Kb.sum(Kb.square(v), axis=-1))
+
+
 def res_loss(pred, gtrue):
-    r = gtrue - pred  # shape of both (batch, 45)
-    logic = Kb.less(Kb.abs(r), 1 / (o ^ 2))
-    p = Kb.switch(logic, 0.5 * (o ^ 2) * Kb.square(r), Kb.abs(r) - (0.5 / (o ^ 2)))
+    r = gtrue - pred  # shape of both (batch, J*3)
+
+    p = Kb.abs(r)
+
+    # logic = Kb.less(Kb.abs(r), 1 / (o ** 2))
+    # p = Kb.switch(logic, 0.5 * (o ** 2) * Kb.square(r), Kb.abs(r) - (0.5 / (o ** 2)))
 
     return Kb.sum(p, axis=-1)
 
@@ -144,20 +294,27 @@ def column(matrix, i):
     return np.transpose(matrix, (1, 0, 2))[i]
 
 
-def preprocess(depth_maps):
-    res = np.zeros((depth_maps.shape[0], 100, 100))
-    center_y = round(depth_maps[0].shape[0] / 2)
-    center_x = round(depth_maps[0].shape[1] / 2)
+# def preprocess(depth_maps):
+#     res = np.zeros((depth_maps.shape[0], input_size, input_size))
+#     half = input_size // 2
+#     center_y = round(depth_maps[0].shape[0] // 2)
+#     center_x = round(depth_maps[0].shape[1] // 2)
+#
+#     for i in range(depth_maps.shape[0]):
+#         res[i] = depth_maps[i][center_y - half: center_y + half,
+#                  center_x - half:center_x + half]  # crop width to 100 around center
+#         res[i] = cv2.normalize(res[i], None, 0, 1, cv2.NORM_MINMAX, dtype=cv2.CV_32F)
+#         # res[i] = np.array(res[i], dtype=np.float32)
+#         # img = np.array(res[i] * 255, dtype=np.uint8)  # for visualization
+#         # cv2.imshow("img", img)
+#         # cv2.waitKey(0)
+#         res[i] = rescale(res[i], 0, 1)
+#
+#     return res
 
-    for i in range(depth_maps.shape[0]):
-        res[i] = depth_maps[i][center_y - 50: center_y + 50,
-                 center_x - 50:center_x + 50]  # crop width to 100 around center
 
-        # img = np.array(res[i] * 255, dtype=np.uint8)  # for visualization
-        # cv2.imshow("img", img)
-        # cv2.waitKey(0)
-
-    return res
+def rescale(x, lw, up):
+    return lw + ((x - Kb.min(x, axis=-1)) / (Kb.max(x, axis=-1) - Kb.min(x, axis=-1))) * (up - lw)
 
 
 def random_prototype_poses(train_poses, img_coords=None):
@@ -208,27 +365,56 @@ def validation_generator(files_x, files_y, batch_size=batch_size):
 
 
 def avg_error(y_true, y_pred):
-    y = Kb.transpose(y_pred)[0]  # (batch_size,)
-    y = Kb.expand_dims(y, -1)  # (batch_size, 1)
+    y = Kb.stack([y_pred] * (J * 3), axis=-1)
+    yt = Kb.permute_dimensions(y, [0, 2, 1])  # same weight for each joint in particular prototype in column
 
-    p_e = Kb.constant(1, shape=(K, 1, J * 3))
+    # normalize
+    tci = Kb.transpose(Kb.transpose(tc) - meanpose)
+    tci = Kb.transpose(Kb.transpose(tci) / np.sqrt(varpose))
+    #######
 
-    p = Kb.dot(y, p_e)  # (batch_size, K, J*3)
-    p = Reshape(target_shape=(K, J, 3))(p)
-    p = Kb.permute_dimensions(p, (0, 2, 1, 3))  # (batch_size, J, K, 3)
-    # p = Kb.constant(1, shape=(batch_size, J, K, 3))
+    c_pred = yt * tci  # (batch_size, J*3, K) # tci
+    c_pred = Kb.sum(c_pred, axis=-1)
 
-    tc = Kb.ones_like(p) * C
+    # back to real center and scale
+    c_pred = c_pred * np.sqrt(varpose)
+    c_pred = c_pred + meanpose
+    #######
 
-    tc = Kb.permute_dimensions(tc, (0, 1, 3, 2))
-    tc = Reshape(target_shape=(J * 3, K))(tc)
-
-    c_pred = Kb.batch_dot(y_pred, tc, axes=[1, 2])  # p^
-
-    c_pred = Reshape(target_shape=(15, 3))(c_pred)  # expand last dimension back into two -> 15, 3
+    c_pred = Reshape(target_shape=(J, 3))(c_pred)  # expand last dimension back into two -> 15, 3
+    # c_pred = Reshape(target_shape=(J, 3))(y_pred)  # baseline model
 
     # Euclidean distance between predicted and ground-truth pose
     return Kb.mean(Kb.sqrt(Kb.sum(Kb.square(c_pred - y_true), axis=-1)), axis=-1)
+
+
+def meanAveragePrecision(y_true, y_pred):
+    y = Kb.stack([y_pred] * (J * 3), axis=-1)
+    yt = Kb.permute_dimensions(y, [0, 2, 1])  # same weight for each joint in particular prototype in column
+
+    # normalize
+    tci = Kb.transpose(Kb.transpose(tc) - meanpose)
+    tci = Kb.transpose(Kb.transpose(tci) / np.sqrt(varpose))
+    #######
+
+    c_pred = yt * tci  # (batch_size, J*3, K)
+    c_pred = Kb.sum(c_pred, axis=-1)
+
+    # back to real center and scale
+    c_pred = c_pred * np.sqrt(varpose)
+    c_pred = c_pred + meanpose
+    #######
+
+    c_pred = Reshape(target_shape=(J, 3))(c_pred)  # expand last dimension back into two -> 15, 3
+    # c_pred = Reshape(target_shape=(J, 3))(y_pred)  # baseline model
+
+    dist = Kb.sqrt(Kb.sum(Kb.square(c_pred - y_true), axis=-1))  # tensor of distances between joints pred and gtrue
+
+    logic = Kb.less_equal(dist, thresh)
+
+    res = Kb.switch(logic, Kb.ones_like(dist), Kb.zeros_like(dist))  # 1 if estimated correctly, else 0
+
+    return Kb.mean(Kb.sum(res, axis=-1) / J, axis=-1)
 
 
 def get_random_batch(files, label_files, batch_size=batch_size):
@@ -238,6 +424,90 @@ def get_random_batch(files, label_files, batch_size=batch_size):
     # batch_x = np.expand_dims(batch_x, -1)
     batch_y = np.asarray(batch_y)
     return batch_x, batch_y
+
+
+def getfullpose(prediction):
+    t = C
+    # normalize
+    t = np.transpose(np.transpose(t) - meanpose)
+    t = np.transpose(np.transpose(t) / np.sqrt(varpose))
+
+    pose = np.sum(prediction * t, axis=-1)
+
+    # back to real center and scale
+    pose = pose * np.sqrt(varpose)
+    pose = pose + meanpose
+    #######
+    pose = np.reshape(pose, (15, 3))
+    pose_visualizer.visualize_pose_2D(pose, pause=False, title='predicted pose', isnumpy=True)
+
+def show_poses(preds, groundtruth, start):
+    # t = Kb.permute_dimensions(C, (0, 2, 1))
+    # t = Kb.reshape(t, (J * 3, K))
+    t = C
+    # normalize
+    t = np.transpose(np.transpose(t) - meanpose)
+    t = np.transpose(np.transpose(t) / np.sqrt(varpose))
+    #######
+
+    for idx in range(round(preds.shape[0] / 50)):  # predictions.shape[0]
+        pose = np.sum(preds[idx * 50] * t, axis=-1)
+
+        # back to real center and scale
+        pose = pose * np.sqrt(varpose)
+        pose = pose + meanpose
+        #######
+
+        # pose2 = Kb.sum(predictions2[idx*50] * t, axis=-1)
+        # in 3D
+        # pose = Kb.transpose(Kb.reshape(pose, (15, 3)))
+        # pose_visualizer.visualize_pose_3D(pose, pause=False)
+        # gt = groundtruth[start + (idx * 50)]
+        # gt = Kb.transpose(gt)
+        # pose_visualizer.visualize_pose_3D(gt, pause=True)
+        # in 2D
+        pose = np.reshape(pose, (15, 3))
+        # pose2 = Kb.reshape(pose2, (15, 3))
+        pose_visualizer.visualize_pose_2D(pose, pause=False, title='predicted pose', isnumpy=True)
+        # pose_visualizer.visualize_pose_2D(pose2, pause=False, title='predicted pose a=0.000001')
+        pose_visualizer.visualize_pose_2D(groundtruth[start + (idx * 50)], pause=True, isnumpy=True,
+                                          title='ground truth')
+        #     # depth map
+        #     # depth_map = cv2.resize(test_data_x[start + idx], (244, 244))
+        #     # img = np.array(depth_map * 255, dtype=np.uint8)  # for visualization
+        #     # cv2.imshow('depth map', img)
+        #     # print(idx)
+        #     # cv2.waitKey(0)
+        #
+        #     # most relevant prototype poses #######
+        #
+        #     # sorted_indices = np.argsort(np.abs(predictions[idx]))
+        #     # for p in range(5):
+        #     #     pp = column(C, sorted_indices[-1-p])
+        #     #     print(predictions[idx])
+        #     #     if predictions[idx][sorted_indices[-1-p]] < 0:
+        #     #         sign = "neg"
+        #     #     else:
+        #     #         sign = "pos"
+        #     #
+        #     #     pose_visualizer.visualize_pose_2D(pp, pause=True, isnumpy=True, title=str(p+1)+". most relevant - "+sign)
+
+
+def normalize_meanstd(a, axis=None):
+    # axis param denotes axes along which mean & std reductions are to be performed
+    mean = np.mean(a, axis=axis, keepdims=True)
+    std = np.sqrt(((a - mean) ** 2).mean(axis=axis, keepdims=True))
+    return (a - mean) / std
+
+
+# # learning rate schedule
+# def step_decay(epoch):
+#     initial_lrate = 0.001
+#     drop = 0.08
+#     epochs_drop = 10.0
+#     lrate = initial_lrate * (1. / (1. + drop * (epoch // epochs_drop)))
+#     # lrate = initial_lrate * (1. / (1. + np.power(drop, np.floor((1 + epoch) / epochs_drop))))
+#     return lrate
 
 
 if __name__ == "__main__":
@@ -251,86 +521,109 @@ if __name__ == "__main__":
     # DATASET ########################################################
     #
     # train_dataset = data_loader('D:/skola/master/datasets/ITOP/depth_maps/ITOP_side_train_depth_map.h5',
-    #                      'D:/skola/master/datasets/ITOP/labels/ITOP_side_train_labels.h5')
+    #                             'D:/skola/master/datasets/ITOP/labels/ITOP_side_train_labels.h5')
     #
-    # new_width = round(width / (height / 100.0))
-    # [train_data_x, train_data_y, vis_data] = train_dataset.get_data(new_width, 100)
+    # # new_width = round(width / (height / input_size))
+    # [D, P] = train_dataset.get_data(input_size)
     #
-    # train_data_x = preprocess(train_data_x)  # depth maps (resized to 100x100 (crop),/preprocessed)
+    # # train_data_x = preprocess(train_data_x)  # depth maps (resized to input_size x input_size (crop),/preprocessed)
     #
     # # [train_samples, validation_samples, vis_data] = train_valid_split(train_data_x, train_data_y, vis_data,
     # #                                                                   test_size=0.25)
     #
     # # D = train_samples[0]
     # # P = train_samples[1]  # ground truth poses - normalized joint coords (zero mean //(and one standard deviation))
-    # D = train_data_x
-    # P = train_data_y
+    #
     # D = np.expand_dims(D, -1)
+
     # TEST ######################################################
-    #
+
     # test_dataset = data_loader('D:/skola/master/datasets/ITOP/depth_maps/ITOP_side_test_depth_map.h5',
-    #                     'D:/skola/master/datasets/ITOP/labels/ITOP_side_test_labels.h5')
-    # new_width = round(width / (height / 100.0))
-    # [eval_data_x, eval_data_y, eval_vis_data] = test_dataset.get_data(new_width, 100)
-    # eval_data_x = preprocess(eval_data_x)
-    # eval_data_x = np.expand_dims(eval_data_x, -1)
-    #
-    # [test_data_x, empty, test_vis_data] = test_dataset.get_data(new_width, 100, test=True)
-    # test_data_x = preprocess(test_data_x)
+    #                            'D:/skola/master/datasets/ITOP/labels/ITOP_side_test_labels.h5')
+    # # new_width = round(width / (height / input_size))
+    # [test_data_x, test_data_y] = test_dataset.get_data(input_size)
+    # # test_data_x = preprocess(test_data_x)
     # test_data_x = np.expand_dims(test_data_x, -1)
+    #
+    # # normalize input data ##########################################
+    #
+    # mean_depth = np.mean(np.concatenate((D, test_data_x)), axis=0, keepdims=True)
+    # D = D - mean_depth
+    # test_data_x = test_data_x - mean_depth
+
     #################################################################
 
     D = np.load(depth_maps_file)
     P = np.load(poses_file)
+    C = np.load(prototypes_file)
+
+    # C = loadmat('data/DDP/centroids.mat')['sc']  # (45,70)
+
+    test_data_x = np.load(test_data_x_file)
+    test_data_y = np.load(test_data_y_file)
+    meanpose = np.load('data/DDP/meanpose.npy')
+    varpose = np.load('data/DDP/varpose.npy')
     # shuffle(D, P, random_state=10)
 
-    C = np.load(prototypes_file)
-    # C = k_means_clustering.cluster_prototypes(P, K)  # [C, prototypes_vis_data] = random_prototype_poses(P, vis_data)
+    # C = k_means_clustering.cluster_prototypes(np.concatenate((P, test_data_y)), K)  # [C, prototypes_vis_data] = random_prototype_poses(P, vis_data)
+    tc = C
+
+    # tc = Kb.permute_dimensions(C, [0, 2, 1])
+    # tc = Kb.reshape(tc, (J * 3, K))
 
     # shuffle prototype poses
     # C = C[:, np.random.permutation(C.shape[1])]
 
     # prototypes_vis_data = np.load(prototypes_vis_data_file)  # deprecated
     # validation_samples = [np.load(validation_samples_x_file), np.load(validation_samples_y_file)]
-    eval_data_x = np.load(eval_data_x_file)
-    eval_data_y = np.load(eval_data_y_file)
-    test_data_x = np.load(test_data_x_file)
 
+    # np.save('data/DDP/meanpose.npy', meanpose)
+    # np.save('data/DDP/varpose.npy', varpose)
     # np.save(depth_maps_file, D)
     # np.save(poses_file, P)
     # np.save(prototypes_file, C)
-    # np.save(prototypes_vis_data_file, prototypes_vis_data)
-    # np.save(validation_samples_x_file, validation_samples[0])
-    # np.save(validation_samples_y_file, validation_samples[1])
-    # np.save(eval_data_x_file, eval_data_x)
-    # np.save(eval_data_y_file, eval_data_y)
+    # # np.save(prototypes_vis_data_file, prototypes_vis_data)
+    # # np.save(validation_samples_x_file, validation_samples[0])
+    # # np.save(validation_samples_y_file, validation_samples[1])
     # np.save(test_data_x_file, test_data_x)
+    # np.save(test_data_y_file, test_data_y)
     # MODEL ##########################################################
 
     model = DPP()
-
-    # adagrad = Adagrad(lr=0.001, decay=0.001)
+    # model = vgg_custom()
+    #
+    # # adagrad = Adagrad(lr=0.001, decay=0.00002)
+    # sgd = SGD(lr=0.001, decay=0.0005)
+    # pdm = padam.Padam(lr=0.001, decay=0.00001, beta_1=0.8, beta_2=0.9)
     # rms = rmsprop(lr=0.001, rho=0.9, epsilon=None, decay=0.001)
-    adam = Adam(lr=0.001, decay=0.003)  # - Adam optimizer decays the lr automatically  # 0.0008 # 0.00088 # 0.002
-    model.compile(loss=loss_function,
-                  optimizer=adam, metrics=[avg_error])
+    adam = Adam(lr=0.0001, decay=0.000001, epsilon=0.0000000001)  # 0.0008 # 0.00088 # 0.002 # epsilon=0.0000000001
+    model.compile(loss=loss_function, optimizer=adam, metrics=[avg_error, meanAveragePrecision])
 
     # model.summary()
-    # plot_model(model, to_file='data/DDP/model_plot.png', show_shapes=True, show_layer_names=True)
+    # plot_model(model, to_file='data/DDP/model_plot_new.png', show_shapes=True, show_layer_names=True)
     ##################################################################
 
-    num_training_samples = D.shape[0]
+    # num_training_samples = D.shape[0]
     # num_validation_samples = validation_samples[0].shape[0]
 
     # data_generator = training_generator(D, P, batch_size)
     # valid_generator = validation_generator(validation_samples[0], validation_samples[1], batch_size)
-    get_custom_objects().update({"loss_function": loss_function, "avg_error": avg_error})
+    get_custom_objects().update(
+        {"loss_function": loss_function, "avg_error": avg_error, "meanAveragePrecision": meanAveragePrecision})
 
-    # model = load_model('data/DDP/model_training_norm_smallersplit_dropout_smaller_batch_leakrelu2.h5')
+    # model = load_model('data/DDP/model_training_128b_alpha0.h5')
+    # model2 = load_model('data/DDP/model_training_leak_128b_dropout_each_evenlowestalpha2.h5')
 
-    tbCallBack = keras.callbacks.TensorBoard(log_dir='data/DDP/Graph/norm_new_downscaled', histogram_freq=0,
+    tbCallBack = keras.callbacks.TensorBoard(log_dir='data/DDP/Graph/leak', histogram_freq=0,
                                              write_graph=True,
                                              write_images=True)
+
+    # reduce_lr = keras.callbacks.ReduceLROnPlateau(monitor='val_loss', factor=0.2,
+    #                                     patience=5, min_lr=0.0001)
+
+    # deadReluCheck = DeadReluDetector(D, verbose=True)
+
+    # lrate = keras.callbacks.LearningRateScheduler(step_decay)
 
     # training on |steps| random batches from the training set in each epoch
     # train_history = model.fit_generator(generator=data_generator, epochs=200, validation_data=valid_generator,
@@ -339,58 +632,61 @@ if __name__ == "__main__":
     #                                     steps_per_epoch=500,  # 2000, num_training_samples // batch_size
     #                                     callbacks=[tbCallBack])  # max: epochs = 1000
 
-    # training on all the training samples in each epoch once
-    # D = D[:-6]
-    # P = P[:-6]  # val split 0.2 :-6
-    # eval_data_x = eval_data_x[:-1]
-    # eval_data_y = eval_data_y[:-1]
-
-    # validation_samples[0] = np.expand_dims(validation_samples[0], -1)
-    #
-    train_history = model.fit(D, P, epochs=300, batch_size=batch_size,
-                              validation_split=0.07,
-                              callbacks=[tbCallBack])
-    # # validation_data=validation_samples
+    # D, P = shuffle(D, P, random_state=3)
+    train_history = model.fit(D, P, epochs=200, batch_size=batch_size,
+                              validation_split=0.2,  # 0.02
+                              # validation_data=(test_data_x, test_data_y),
+                              callbacks=[tbCallBack], initial_epoch=0, shuffle=True)
 
     # np.save('data/DDP/train_history_cluster_fixednorm.npy', train_history)
-    model.save('data/DDP/model_training_leak_64b.h5')
+    model.save('data/DDP/model_training_64b_reslosabs.h5')
 
-    start = 160
-    # predictions = model.predict(test_data_x[start:])
+    # for layer in model.layers:
+    #     print(layer.get_config())
+    #
+    #     if len(layer.get_weights()) > 0:
+    #         print('weights: ')
+    #         print(layer.get_weights()[0])
+    #         print('biases: ')
+    #         print(layer.get_weights()[1])
+
+    start = 0
+
+    # predictions = model.predict(D[start:])
+    # predictions_tst = model.predict(test_data_x)
+    predictions = model.predict(test_data_x[start:])
+
+    # postprocess - get full pose
 
     # np.save(predictions_file, predictions)
 
     # predictions = np.load(predictions_file)
+    # predictions2 = np.load(predictions_file2)
+    # #
+    # score = model.evaluate(D, P, batch_size=batch_size)
+    # score2 = model2.evaluate(test_data_x, test_data_y, batch_size=batch_size)
+    # print('Test loss:', score[0], ' ', score2[0])  # 0.3152455667544362 # 0.3125105603790911 #0.14...
+    # print('Test average error:', score[1], ' ', score2[1])  # 0.07282457308264982 # 0.07163713314290304 #0.068...
 
-    # score = model.evaluate(eval_data_x, eval_data_y, batch_size=batch_size)
-    # print('Test loss:', score[0])  # 0.3152455667544362 # 0.3125105603790911
-    # print('Test average error:', score[1])  # 0.07282457308264982 # 0.07163713314290304
-
-    # synth_prediction = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.3, 0, 0, 0, 0, 0, 0,
-    #  0.2, 0, 0, 0, 0, 0, 0, 0, 0, 0.5, 0, 0, 0,
+    # print('Test loss:', score[0])
+    # print('Test average error:', score[1])
+    # #
+    # synth_prediction = [-1,  0, 0, 0, 0,0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    #                     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
     #                     0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    #  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    #                     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
     #                     0, 0, 0, 0, 0, 0, 0, 0]
 
-    # # visualize predictions
+    # synth_prediction = [1] + [0] * 29
+    # # # visualize predictions
+    #
 
-    # t = Kb.permute_dimensions(C, (0, 2, 1))
-    # t = Kb.reshape(t, (J * 3, K))
-    #
-    # for idx in range(predictions.shape[0]):
-    #     pose = Kb.sum(predictions[idx] * t, axis=-1)
-    #     # in 3D
-    #     # pose = Kb.transpose(Kb.reshape(pose, (15, 3)))
-    #     # pose_visualizer.visualize_pose_3D(pose, pause=False)
-    #     # in 2D
-    #     pose = Kb.reshape(pose, (15, 3))
-    #     pose_visualizer.visualize_pose_2D(pose, pause=False)
-    #
-    #     # depth map
-    #     depth_map = cv2.resize(test_data_x[start + idx], (244, 244))
-    #     img = np.array(depth_map * 255, dtype=np.uint8)  # for visualization
-    #     cv2.imshow('depth map', img)
-    #     cv2.waitKey(0)
+    # pose = Kb.sum(synth_prediction * t, axis=-1)
+    # pose = Kb.reshape(pose, (15, 3))
+    # pose_visualizer.visualize_pose_2D(pose, pause=True)
+
+    # show_poses(predictions, test_data_y, start)
+
     #####################################################################
 
     # visualization ##################################################
@@ -401,37 +697,55 @@ if __name__ == "__main__":
 
     # 3D prototype poses
 
-    # cp = Kb.constant(C)
-    # # 3D
-    # cp = Kb.permute_dimensions(cp, (1, 2, 0))
-    # # pose_visualizer.visualize_pose_3D(cp[0], pause=False)
-    # # 2D
-    # cp = Kb.permute_dimensions(cp, (1, 0, 2))
+    # 3D
+    # cp = Kb.permute_dimensions(C, (1, 2, 0))
+    # pose_visualizer.visualize_pose_3D(cp[10], pause=False)
 
+    # 2D
+    # cp = Kb.permute_dimensions(C, (1, 0, 2))
+    # #
     # for p in range(cp.shape[0]):
-    #     # pose_visualizer.visualize_pose_3D(cp[p], pause=False)  # [Press Enter]
-    #     pose_visualizer.visualize_pose_2D(cp[p])
+    #         pose_visualizer.visualize_pose_3D(cp[p], pause=True)  # [Press Enter]
+    #     pose_visualizer.visualize_pose_2D(cp[p], pause=True)
 
     # train data
-    #
-    # [dp, pp] = get_random_batch(D, P)
-    # pp = Kb.constant(pp)
-    # pp = Kb.permute_dimensions(pp, (0, 2, 1))
+
+    # [dp, pp1] = get_random_batch(D, P, batch_size=10)
+    # # pp1 = Kb.constant(pp1)
+    # # pp1 = Kb.permute_dimensions(pp1, (0, 2, 1))
     # for i in range(dp.shape[0]):
-    #     pose_visualizer.visualize_pose_3D(pp[i], pause=False)
-    #     depth_map = cv2.resize(dp[i], (244, 244))
-    #     img = np.array(depth_map * 255, dtype=np.uint8)  # for visualization
-    #     cv2.imshow('depth map', img)
+    #     # pose_visualizer.visualize_pose_2D(pp1[i], pause=False, isnumpy=True, title='train data')
+    #     # depth_map = cv2.resize(dp[i], (244, 244))
+    #     depth_map = np.array(dp[i] * 255)  # for visualization
+    #     cv2.imshow('depth map', depth_map)
     #     cv2.waitKey(0)  # [Press any key]
 
-    # validation data
+    # joint coords area
+    # pose_visualizer.visualize_pose_2D(P, pause=False, array=True, isnumpy=True, title='train data')
+
+    # test data
+
+    # test_data_x, test_data_y = shuffle(test_data_x, test_data_y)
+    # [dp, pp2] = get_random_batch(test_data_x, test_data_y, batch_size=1000)
+
+    # t = Kb.transpose(Kb.transpose(tc) - meanpose)
+    # t = Kb.transpose(Kb.transpose(t) / np.sqrt(varpose))
     #
-    # [dp, pp] = get_random_batch(validation_samples[0], validation_samples[1], batch_size=batch_size)
-    # pp = Kb.constant(pp)
-    # pp = Kb.permute_dimensions(pp, (0, 2, 1))
+    # dp, pp2 = test_data_x, predictions
+    # # pp2 = Kb.constant(pp2)
+    # # pp2 = Kb.permute_dimensions(pp2, (0, 2, 1))
     # for p in range(dp.shape[0]):
-    #     pose_visualizer.visualize_pose_3D(pp[p], pause=False)
+    #     pose = Kb.sum(pp2[p] * t, axis=-1)
+    #     # back to real center and scale
+    #     pose = pose * np.sqrt(varpose)
+    #     pose = pose + meanpose
+    #     pose = Kb.reshape(pose, (15, 3))
+    #     pose_visualizer.visualize_pose_2D(pose, pause=False, title='test data')
+    #     pose_visualizer.visualize_pose_2D(test_data_y[p], isnumpy=True, pause=False, title='test data gt')
     #     depth_map = cv2.resize(dp[p], (244, 244))
-    #     img = np.array(depth_map * 255, dtype=np.uint8)  # for visualization
-    #     cv2.imshow('depth map', img)
+    #     depth_map = np.array(depth_map * 255)  # for visualization
+    #     cv2.imshow('depth map', depth_map)
     #     cv2.waitKey(0)  # [Press any key]
+
+    # joint coords area
+    # pose_visualizer.visualize_pose_2D(test_data_y, pause=False, isnumpy=True, array=True, title='test data')
