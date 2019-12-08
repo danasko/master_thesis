@@ -14,61 +14,230 @@ import tensorflow as tf
 import numpy as np
 import multiprocessing as mp
 import keras.backend as Kb
-from scipy.io import loadmat  # from Matlab
-from tensorflow import set_random_seed
+# from tensorflow import set_random_seed
 # from Adam_lr_mult import *
 # from keras_contrib.callbacks import DeadReluDetector
 # from visualize_weights import visualize_layer
 from sklearn.utils import shuffle
+import logging
 import h5py
 
 from preprocess import *
 from visualizer import *
 from data_generator import *
-
-batch_size = 32
-numPoints = 2048  # number of points in each pcl
-numJoints = 18  # 29
-numRegions = 18  # 18  # 45, 29
-
-numTrainSamples = 59059
-numValSamples = 19019
-numTestSamples = 19019
-
-# scaler_minX, scaler_minY, scaler_minZ = None, None, None
-# scaler_scaleX, scaler_scaleY, scaler_scaleZ = None, None, None
-
-pcls_min = [1000000, 1000000, 1000000]
-pcls_max = [-1000000, -1000000, -1000000]
-# pcls_min = None
-# pcls_max = None
-
-poses_min = [1000000, 1000000, 1000000]
-poses_max = [-1000000, -1000000, -1000000]
+from data_loader import *
+from config import *
 
 
-# train_x = None  # input pointclouds
-# train_y_joints = None  # x,y,z coordinates for each joint
-# train_y_regions = None  # rgb color for each point
+# keras.backend.set_floatx('float64')
 
 
 def tile(global_feature, numPoints):
     return Kb.repeat_elements(global_feature, numPoints, 1)
 
 
+def my_model():
+    input_points = Input(shape=(numPoints, 1, 4))
+    local_feature1 = Conv2D(filters=512, kernel_size=(1, 1), input_shape=(numPoints, 1, 4),
+                            kernel_initializer='glorot_normal',
+                            activation='relu')(input_points)
+    local_feature2 = Conv2D(filters=1024, kernel_size=(1, 1),
+                            activation='relu', kernel_initializer='glorot_normal')(local_feature1)
+    local_feature3 = Conv2D(filters=2048, kernel_size=(1, 1),
+                            activation='relu', kernel_initializer='glorot_normal')(local_feature2)
+    local_feature1_exp = Conv2D(filters=2048, kernel_size=(1, 1))(
+        local_feature1)  # TODO try res connection wo global (wo maxpool)
+    local_feature2_exp = Conv2D(filters=2048, kernel_size=(1, 1))(
+        local_feature1)  # TODO try res connection wo global (wo maxpool)
+    shortcut1 = keras.layers.add([local_feature1_exp, local_feature2_exp, local_feature3])  # add
+
+    # res1 = keras.layers.Activation('relu')(res1)  # a bez tohto
+    global_feature = MaxPooling2D(pool_size=(2048, 1))(shortcut1)
+
+    # local_feature2_exp = Conv2D(filters=2048, kernel_size=(1, 1))(local_feature2)
+    # global_exp = Lambda(tile, arguments={'numPoints': 128})(
+    #     global_feature)
+    # global_feature = keras.layers.Activation('relu')(global_feature)
+    f1 = Conv2D(filters=512, kernel_size=(1, 1),
+                kernel_initializer='glorot_normal')(global_feature)
+    f1a = keras.layers.Activation('relu')(f1)
+    # f = Conv2D(filters=256, kernel_size=(2, 1),
+    #                         activation='relu', kernel_initializer='glorot_normal')(f)
+    f2 = Conv2D(filters=256, kernel_size=(1, 1), kernel_initializer='glorot_normal')(f1a)
+    # f2 = Conv2D(filters=512, kernel_size=(1, 1))(f2)
+    # shortcut2 = keras.layers.add([f2, f1])
+    f2 = keras.layers.Activation('relu')(f2)
+    # f2 = Conv2D(filters=512, kernel_size=(1, 1))(f2)
+    # res2 = keras.layers.concatenate([f1, f2])
+    # f = MaxPooling2D(pool_size=(15, 1))(f)
+    #  strides  # shape= (b, 1, 1, 2048)
+    # global_feature_exp = Lambda(tile, arguments={'numPoints': 2046})(
+    #     global_feature)  # shape= (b, numPoints=2048, 1, 2048)
+    # f = concatenate([local_feature2, local_feature3, global_feature_exp], axis=-1)
+    # f = Conv2D(filters=256, kernel_size=(1,1), activation='relu', kernel_initializer='glorot_normal')(global_feature)
+    f = Flatten()(f2)
+    # f = keras.layers.GlobalAveragePooling2D()(f2)
+    f = Dense(512, kernel_initializer='glorot_normal', activation='relu')(f)
+    f = Dense(256, kernel_initializer='glorot_normal', activation='relu')(f)
+    # output1 = Dense(k, name='output1', activation='softmax', kernel_initializer='glorot_normal')(f)
+    output1 = Dense(numJoints * 3, name='output1', kernel_initializer='glorot_normal')(f)
+
+    model = Model(inputs=input_points, outputs=output1)
+    return model
+
+
+def seg_net():
+    input_points = Input(shape=(numPoints, 1, 3))
+    local_feature1_noact = Conv2D(filters=1024, kernel_size=(1, 1), input_shape=(numPoints, 1, 3),  # 512
+                                  kernel_initializer='glorot_normal')(input_points)
+
+    # shortcut1_1 = keras.layers.concatenate([local_feature1, input_points])
+
+    local_feature1 = keras.layers.Activation('relu')(local_feature1_noact)
+
+    # local_feature1 = BatchNormalization(momentum=0.9)(local_feature1)
+
+    local_feature2 = Conv2D(filters=1024, kernel_size=(1, 1),
+                            kernel_initializer='glorot_normal')(local_feature1)
+
+    shortcut1_2 = keras.layers.add([local_feature1_noact, local_feature2])  # input_points
+
+    local_feature2 = keras.layers.Activation('relu')(shortcut1_2)
+
+    # local_feature2 = BatchNormalization(momentum=0.9)(local_feature2)
+
+    local_feature3 = Conv2D(filters=1024, kernel_size=(1, 1),  # 2048
+                            kernel_initializer='glorot_normal')(local_feature2)
+
+    shortcut1_3 = keras.layers.add([local_feature1_noact, local_feature3])  # input_points
+
+    local_feature3 = keras.layers.Activation('relu')(shortcut1_3)
+
+    # d = Dropout(0.2)(local_feature3)
+
+    # local_feature3 = BatchNormalization(momentum=0.9)(local_feature3)
+
+    # local_feature4 = Conv2D(filters=2048, kernel_size=(1, 1),
+    #                         activation='relu', kernel_initializer='glorot_normal')(local_feature3)
+
+    global_feature = MaxPooling2D(pool_size=(numPoints, 1))(local_feature3)  # strides  # shape= (b, 1, 1, 2048)
+    global_feature_exp = Lambda(tile, arguments={'numPoints': numPoints})(
+        global_feature)  # shape= (b, numPoints=2048, 1, 2048)
+
+    # Auxiliary part-segmentation network - only for training - removed at test time
+
+    c = keras.layers.concatenate([global_feature_exp, local_feature1, local_feature2, local_feature3])
+
+    conv1 = Conv2D(filters=512, kernel_size=(1, 1), kernel_initializer='glorot_normal')(c)  # 256
+
+    c = keras.layers.Activation('relu')(conv1)
+
+    c = BatchNormalization(momentum=0.9)(c)
+
+    c = Dropout(0.2)(c)
+
+    c = Conv2D(filters=512, kernel_size=(1, 1), kernel_initializer='glorot_normal')(c)  # 256
+
+    shortcut2_1 = keras.layers.add([conv1, c])
+
+    c = keras.layers.Activation('relu')(shortcut2_1)
+
+    c = BatchNormalization(momentum=0.9)(c)
+
+    c = Dropout(0.2)(c)
+
+    c = Conv2D(filters=512, kernel_size=(1, 1), kernel_initializer='glorot_normal')(c)  # 256
+
+    shortcut2_2 = keras.layers.add([shortcut2_1, c])
+
+    c = keras.layers.Activation('relu')(shortcut2_2)
+
+    c = BatchNormalization(momentum=0.9)(c)
+
+    output = Conv2D(numRegions, (1, 1), activation='softmax', kernel_initializer='glorot_normal')(c)
+
+    return Model(inputs=input_points, outputs=output)
+
+
+def loss_func(y_true, y_pred):
+    # y_pred shape = (?, k), clusters shape = (k, numJoints, 3)
+    clusters = centers.reshape(k, numJoints * 3)
+    preds = y_pred @ clusters
+    # preds = Reshape((numJoints, 3))(preds)  # shape = (?, numJoints, 3)
+    return Kb.mean(Kb.abs(y_true - preds), axis=-1)  # MAE
+
+
+def PBPE_new():
+    input_points = Input(shape=(numPoints, 1, 3))
+    local_feature1 = Conv2D(filters=512, kernel_size=(1, 1), input_shape=(numPoints, 1, 3),
+                            kernel_initializer='glorot_normal',
+                            activation='relu')(input_points)
+    local_feature2 = Conv2D(filters=1024, kernel_size=(1, 1),
+                            activation='relu', kernel_initializer='glorot_normal')(local_feature1)
+    local_feature3 = Conv2D(filters=2048, kernel_size=(1, 1),
+                            activation='relu', kernel_initializer='glorot_normal')(local_feature2)
+    # local_feature4 = Conv2D(filters=2048, kernel_size=(1, 1),
+    #                         activation='relu', kernel_initializer='glorot_normal')(local_feature3)
+
+    global_feature = MaxPooling2D(pool_size=(numPoints, 1))(
+        local_feature3)  # strides  # shape= (b, 1, 1, 2048)
+    global_feature_exp = Lambda(tile, arguments={'numPoints': numPoints})(
+        global_feature)  # shape= (b, numPoints=2048, 1, 2048)
+
+    f = Flatten(dtype=np.float64)(global_feature)
+    f = Dense(256, kernel_initializer='glorot_normal', activation='relu')(f)
+    f = Dense(256, kernel_initializer='glorot_normal', activation='relu')(f)
+
+    # f = Dropout(0.2)(f)
+
+    output1 = Dense(3 * numJoints, name='output1')(f)
+
+    # Auxiliary part-segmentation network - only for training - removed at test time
+
+    c = concatenate([global_feature_exp, local_feature1, local_feature2, local_feature3],
+                    axis=-1)  # TODO try concatenating only last two local feats
+
+    c = Conv2D(filters=256, kernel_size=(1, 1),
+               activation='relu', kernel_initializer='glorot_normal')(c)
+
+    c = BatchNormalization(momentum=0.9)(c)
+
+    c = Dropout(0.2)(c)
+
+    c = Conv2D(filters=256, kernel_size=(1, 1),
+               activation='relu', kernel_initializer='glorot_normal')(c)
+
+    c = BatchNormalization(momentum=0.9)(c)
+
+    c = Dropout(0.2, dtype=np.float64)(c)
+
+    c = Conv2D(filters=128, kernel_size=(1, 1),
+               activation='relu', kernel_initializer='glorot_normal')(c)
+
+    c = BatchNormalization(momentum=0.9)(c)
+
+    output2 = Conv2D(numRegions, (1, 1), activation='softmax', kernel_initializer='glorot_normal',
+                     name='output2')(c)
+
+    model = Model(inputs=input_points, outputs=[output1, output2])
+    test_model = Model(inputs=input_points, outputs=output1)
+    return model, test_model
+
+
 def PBPE():
     input_points = Input(shape=(numPoints, 1, 3))
     local_feature1 = Conv2D(filters=512, kernel_size=(1, 1), input_shape=(numPoints, 1, 3),
                             kernel_initializer='glorot_normal',
-                            dim_ordering='tf', activation='relu')(input_points)  # glorot_normal
+                            activation='relu')(input_points)
     # local_feature1 = LeakyReLU()(local_feature1)
     # local_feature1 = BatchNormalization(momentum=0.9)(x)  # momentum=0.9  # TODO batchnorm
     local_feature2 = Conv2D(filters=2048, kernel_size=(1, 1),
-                            activation='relu', kernel_initializer='glorot_normal', dim_ordering='tf')(local_feature1)
+                            activation='relu', kernel_initializer='glorot_normal')(local_feature1)
 
     # local_feature2 = BatchNormalization(momentum=0.9)(x)  # shape = (b, numPoints=2048, 1, 2048)  # TODO batchnorm
 
-    global_feature = MaxPooling2D(pool_size=(numPoints, 1))(local_feature2)  # strides  # shape= (b, 1, 1, 2048)
+    global_feature = MaxPooling2D(pool_size=(numPoints, 1))(
+        local_feature2)  # strides  # shape= (b, 1, 1, 2048)
     global_feature_exp = Lambda(tile, arguments={'numPoints': numPoints})(
         global_feature)  # shape= (b, numPoints=2048, 1, 2048)
 
@@ -77,274 +246,55 @@ def PBPE():
     # f = BatchNormalization(momentum=0.9)(f)  # TODO batchnorm
 
     f = Dense(256, kernel_initializer='glorot_normal')(f)  # todo dense with activation
-    #  f = BatchNormalization(momentum=0.9)(f)  # TODO batchnorm
+    # f = BatchNormalization(momentum=0.9)(f)  # TODO batchnorm
 
-    # f = Dropout(0.3)(f)  # keep_prob = 0.7 => rate = 0.3
+    # f = Dropout(0.3)(f)
 
     output1 = Dense(3 * numJoints, name='output1')(f)
-
-    # output1 = PReLU(name='output1')(f)
 
     # Auxiliary part-segmentation network - only for training - removed at test time
 
     c = concatenate([global_feature_exp, local_feature1, local_feature2], axis=-1)
 
     c = Conv2D(filters=256, kernel_size=(1, 1),
-               activation='relu', kernel_initializer='glorot_normal', dim_ordering='tf')(c)
+               activation='relu', kernel_initializer='glorot_normal')(c)
 
-    c = BatchNormalization(momentum=0.9)(c)  # momentum=0.9
+    c = BatchNormalization(momentum=0.9)(c)
+
+    c = Dropout(0.2)(c)
 
     c = Conv2D(filters=256, kernel_size=(1, 1),
-               activation='relu', kernel_initializer='glorot_normal', dim_ordering='tf')(c)
+               activation='relu', kernel_initializer='glorot_normal')(c)
 
     c = BatchNormalization(momentum=0.9)(c)
 
-    # TODO dropout 0.2
-
-    # c = Dropout(0.2)(c)
+    c = Dropout(0.2)(c)
 
     c = Conv2D(filters=128, kernel_size=(1, 1),
-               activation='relu', kernel_initializer='glorot_normal', dim_ordering='tf')(c)
+               activation='relu', kernel_initializer='glorot_normal')(c)
 
     c = BatchNormalization(momentum=0.9)(c)
 
-    # TODO dropout 0.2
+    output2 = Conv2D(numRegions, (1, 1), activation='softmax', kernel_initializer='glorot_normal',
+                     name='output2')(c)
 
-    # c = Dropout(0.2)(c)
-
-    output2 = Conv2D(numRegions, (1, 1), activation='softmax', kernel_initializer='glorot_normal', name='output2',
-                     dim_ordering='tf')(c)
-
-    model = Model(inputs=input_points, outputs=[output1, output2])  # , output2
-    return model
+    model = Model(inputs=input_points, outputs=[output1, output2])
+    test_model = Model(inputs=input_points, outputs=output1)
+    return model, test_model
 
 
-def UBC_convert_pcl_files(index=0, start=1, end=60, mode='train'):
-    global pcls_min, pcls_max
-    for j in range(start, end):
-        if j != 6:
-            x = loadmat('D:/skola/master/datasets/UBC3V/ubc3v-master/exported_clouds_hard_'
-                        + mode + str(j) + '.mat')['exported_clouds']
-            # y_regions = \
-            #     loadmat('D:/skola/master/datasets/UBC3V/ubc3v-master/exported_regions_hard_valid' + str(j) + '.mat')[
-            #         'exported_regions']
-            # print(x[0, 0][0])
+def avg_error_proto(y_true, y_pred):
+    clusters = centers.reshape(k, numJoints * 3)
+    preds = y_pred @ clusters
+    return avg_error(y_true, preds)
 
-            # subsampling input pointclouds to numPoints
-            for i in range(x.shape[0]):
-                # visualize_3D(x[i, 0][0])
-                t, pcls_min, pcls_max = subsample(x[i, 0][0], numPoints, pcls_min,
-                                                  pcls_max)
-
-                # pose = np.load('data/' + mode + '/pose/' + str(index).zfill(5) + '.npy')
-                # t, pose = subsample(x[i, 0][0], pose, numPoints)
-                if not i % 100:
-                    print(i, ' pcls processed')
-                np.save('data/' + mode + '/notscaledpcl/' + str(index).zfill(5) + '.npy', t)
-                # np.save('data/' + mode + '/pose/' + str(index).zfill(5) + '.npy', pose)
-                # np.save('data/' + mode + '/region_initial/'+ str(index).zfill(5) + '.npy', regions)
-                index += 1
-                np.save('data/' + mode + '/pcls_minmax.npy', [pcls_min, pcls_max])
-
-
-def UBC_convert_region_files(index=0, start=1, end=61, mode='train'):
-    global pcls_min, pcls_max
-    for j in range(start, end):
-        if j != 6:
-            train_y_regions = \
-                loadmat('G:/skola/master/datasets/UBC3V/exported_clouds_mat/hard-pose/train/regions/'
-                        'exported_regions_hard_'
-                        + mode + str(j) + '.mat')['exported_regions']
-            # train_y_np = np.zeros(shape=(train_y_regions.shape[0], numPoints, 3))
-            x = loadmat(
-                'G:/skola/master/datasets/UBC3V/exported_clouds_mat/hard-pose/train/pcls/exported_clouds_hard_'
-                + mode + str(j) + '.mat')['exported_clouds']
-
-            # subsampling input pointclouds to numPoints
-            for i in range(train_y_regions.shape[0]):  # train_y_regions.shape[0]
-                # visualize_3D(train_x[i, 0][0])
-                # pcl = np.load(
-                #     'data/train/notscaledpcl/' + str(index).zfill(5) + '.npy')
-                # train_y_np = train_y_np[indices]
-                regs = np.asarray(train_y_regions[i, 0][0], dtype=np.int)
-                regs = region_mapping(regs)
-                # print(t)
-                pcl, pcls_min, pcls_max, regs = subsample(x[i, 0][0], numPoints, pcls_min, pcls_max, regions=regs)
-                if not i % 100:
-                    print(i, ' region files processed')
-                # visualize_3D(pcl, regions=t)
-
-                np.save('data/UBC/' + mode + '/regions44/' + str(index).zfill(5) + '.npy', regs)
-                np.save('data/UBC/' + mode + '/notscaledpcl/' + str(index).zfill(5) + '.npy', pcl)
-                np.save('data/UBC/' + mode + '/pcls_minmax.npy', [pcls_min, pcls_max])
-                # print(pcl.shape, regs.shape)
-                index += 1
-
-
-def MHAD_loadpcls(index=0, start=1, end=12):  # TODO last Subject as test set
-    # allp = np.empty((2410, numPoints, 3))
-    # for i in range(0, 2410):
-    #     s = np.load('data/MHAD/train/notscaledpcl/' + str(i).zfill(6) + '.npy')
-    #     allp[i] = s
-
-    for r in range(1, 4):
-        for j in range(start, end):
-            print(j)
-            # file = h5py.File('G:/skola/master/datasets/MHAD/exported/pcl/S' + str(j).zfill(
-            #     2) + '.mat', 'r')
-            # x = file.get('clouds').value
-            # print(x.shape)
-            x = loadmat(
-                'G:/skola/master/datasets/MHAD/exported/pcl/S' + str(j).zfill(
-                    2) + '_R' + str(r).zfill(2) + '.mat')['clouds'][0]
-
-            xx = np.asarray([np.asarray(xi) for xi in x])
-            allp = np.concatenate([allp, xx], axis=0)
-
-            for i in range(x.shape[0]):  # x.shape[0]
-                # TODO scale to -1,1 - and save as scaledglobal
-
-                # pcl = np.array(file[x[0][0]]).T  # x[i]
-                pcl = x[i]
-                # [pcl, _, _] = subsample(pcl, numPoints, 0, 0)
-                # visualize_3D(pcl)
-                np.save('data/MHAD/train/notscaledpcl/' + str(index).zfill(6) + '.npy', pcl)
-                index += 1
-
-            # TODO min and max values for scaling
-            minn = np.min(allp, axis=(0, 1))
-            maxx = np.max(allp, axis=(0, 1))
-            print(minn.shape)
-            m1 = np.minimum(minn, pcls_min)
-            m2 = np.maximum(maxx, pcls_max)
-            np.save('data/MHAD/train/pcls_minmax.npy', [m1, m2])
-    # print(minn, maxx)
-
-
-def MHAD_random_split(rate=0.25):
-    pass
-    # newPath = shutil.move('sample1.txt', 'test')
-
-
-# def load_poses(index=0, mode='train'):
-#     # pose_file = loadmat('D:/skola/master/datasets/UBC3V/ubc3v-master/exported_poses_hard_' + mode + '.mat')['poses'][0]
-#     train_pose_file = loadmat('D:/skola/master/datasets/UBC3V/ubc3v-master/exported_poses_hard_train.mat')['poses'][0]
-#     train_poses = np.asarray([train_pose_file[i][0] for i in range(train_pose_file.shape[0])])
-#     # train_poses = np.reshape(train_poses, (train_poses.shape[0], numJoints * 3))
-#
-#     valid_pose_file = loadmat('D:/skola/master/datasets/UBC3V/ubc3v-master/exported_poses_hard_valid.mat')['poses'][0]
-#     valid_poses = np.asarray([valid_pose_file[i][0] for i in range(valid_pose_file.shape[0])])
-#     # valid_poses = np.reshape(valid_poses, (valid_poses.shape[0], numJoints * 3))
-#
-#     test_pose_file = loadmat('D:/skola/master/datasets/UBC3V/ubc3v-master/exported_poses_hard_test.mat')['poses'][0]
-#     test_poses = np.asarray([test_pose_file[i][0] for i in range(test_pose_file.shape[0])])
-#     # test_poses = np.reshape(test_poses, (test_poses.shape[0], numJoints * 3))
-#
-#     poses = np.concatenate([train_poses, valid_poses, test_poses], axis=0)
-#     print(poses.shape)
-#
-#     for a in range(3):
-#         # scale each axis separately
-#         scaler = MinMaxScaler(feature_range=(-1, 1))
-#         scaler.fit_transform(poses[:, :, a])
-#
-#         train_poses[:, :, a] = scaler.transform(train_poses[:, :, a])
-#         valid_poses[:, :, a] = scaler.transform(valid_poses[:, :, a])
-#         test_poses[:, :, a] = scaler.transform(test_poses[:, :, a])
-#
-#         np.save('data/pose_scaler' + str(a) + '.npy', np.asarray([scaler.min_, scaler.scale_]))
-#
-#     for j in range(index, train_poses.shape[0]):
-#         np.save('data/train/scaledpose/' + str(j).zfill(5) + '.npy', train_poses[j])
-#     for j in range(index, test_poses.shape[0]):
-#         np.save('data/test/scaledpose/' + str(j).zfill(5) + '.npy', test_poses[j])
-#     for j in range(index, valid_poses.shape[0]):
-#         np.save('data/valid/scaledpose/' + str(j).zfill(5) + '.npy', valid_poses[j])
-
-
-def scale_poses(mode='train', data='UBC'):
-    global poses_min, poses_max
-    poses_file = loadmat('D:/skola/master/datasets/UBC3V/ubc3v-master/exported_poses_hard_' + mode + '.mat')['poses'][0]
-    poses = np.asarray([poses_file[i][0] for i in range(poses_file.shape[0])])
-
-    if mode == 'train':
-        poses_min = np.minimum(poses_min, np.min(poses, axis=(0, 1)))
-        poses_max = np.maximum(poses_max, np.max(poses, axis=(0, 1)))
-        np.save('data/' + data + '/train/poses_minmax.npy', [poses_min, poses_max])
-
-    # print(poses_min, poses_max)
-    for i, p in enumerate(poses):
-        if mode == 'test':
-            np.save('data/' + data + '/test/notscaledpose/' + str(i).zfill(5) + '.npy', p)
-        # p[:, 0] = 2 * (p[:, 0] - poses_min[0]) / (poses_max[0] - poses_min[0]) - 1
-        # p[:, 1] = 2 * (p[:, 1] - poses_min[1]) / (poses_max[1] - poses_min[1]) - 1
-        # p[:, 2] = 2 * (p[:, 2] - poses_min[2]) / (poses_max[2] - poses_min[2]) - 1
-        p = 2 * (p - poses_min) / (poses_max - poses_min) - 1
-        np.save('data/' + data + '/' + mode + '/posesglobalseparate/' + str(i).zfill(5) + '.npy', p)
-
-
-def generate_regions_all(mode='train', data='UBC'):
-    if mode == 'train':
-        num = numTrainSamples
-    elif mode == 'valid':
-        num = numValSamples
-    else:
-        num = numTestSamples
-    for i in range(num):
-        pose = np.load('data/' + data + '/' + mode + '/notscaledpose/' + str(i).zfill(5) + '.npy')
-        pcl = np.load('data/' + data + '/' + mode + '/notscaledpcl/' + str(i).zfill(5) + '.npy')
-        regions = automatic_annotation(pose, pcl)
-        # visualize_3D(pcl, regions=regions, pose=pose)
-        np.save('data/' + data + '/' + mode + '/region/' + str(i).zfill(5) + '.npy', regions)
-
-
-def scale(mode='train', data='UBC'):
-    [pcls_min, pcls_max] = np.load('data/' + data + '/train/pcls_minmax.npy')  # TODO try also with valid min and max
-
-    if mode == 'train':
-        num = numTrainSamples
-    elif mode == 'valid':
-        num = numValSamples
-    else:
-        num = numTestSamples
-
-    for i in range(num):
-        pcl = np.load('data/' + data + '/' + mode + '/notscaledpcl/' + str(i).zfill(5) + '.npy')
-        # pose = np.load('data/' + mode + '/notscaledpose/' + str(i).zfill(5) + '.npy')
-
-        pcl = 2 * (pcl - pcls_min) / (pcls_max - pcls_min) - 1
-        if data == 'MHAD':  # TODO also shift to zero mean
-            pcl = pcl - pcl.mean(axis=0)
-        # pose = 2 * (pose - pcls_min) / (pcls_max - pcls_min) - 1
-
-        np.save('data/' + data + '/' + mode + '/scaledpclglobal/' + str(i).zfill(5) + '.npy', pcl)
-        # np.save('data/' + mode + '/scaledposeglobal/' + str(i).zfill(5) + '.npy', pose)
-
-
-def unscale_to_cm(pose, mode='train', data='UBC'):
-    [poses_min, poses_max] = np.load('data/' + data + '/' + mode + '/poses_minmax.npy')
-    # pose2 = np.zeros_like(pose)
-    # pose2[:, 0] = (pose[:, 0] + 1) * (poses_max[0] - poses_min[0]) / 2 + poses_min[0]
-    # pose2[:, 1] = (pose[:, 1] + 1) * (poses_max[1] - poses_min[1]) / 2 + poses_min[1]
-    # pose2[:, 2] = (pose[:, 2] + 1) * (poses_max[2] - poses_min[2]) / 2 + poses_min[2]
-
-    pose2 = (pose + 1) * (poses_max - poses_min) / 2 + poses_min
-
-    return pose2
-
-
-#
-# def unscale_axis_to_cm(p, axis, mode='train'):  # shape = (batch, numJoints)
-#     [poses_min, poses_max] = np.load('data/' + mode + '/poses_minmax.npy')
-#     p2 = (p + 1) * (poses_max[axis] - poses_min[axis]) / 2 + poses_min[axis]
-#     return p2
 
 def avg_error(y_true, y_pred):  # shape=(batch, 3 * numJoints)
     y_pred = Reshape((numJoints, 3))(y_pred)
     y_true = Reshape((numJoints, 3))(y_true)  # shape=(batch, numJoints, 3)
 
-    y_pred = unscale_to_cm(y_pred)
-    y_true = unscale_to_cm(y_true)
+    y_pred = unscale_to_cm(y_pred, data=dataset)
+    y_true = unscale_to_cm(y_true, data=dataset)
 
     # y_predX = y_pred[:, :, 0]
     # y_predY = y_pred[:, :, 1]
@@ -367,7 +317,24 @@ def avg_error(y_true, y_pred):  # shape=(batch, 3 * numJoints)
     # y_true = Kb.concatenate([Kb.expand_dims(y_trueX), Kb.expand_dims(y_trueY), Kb.expand_dims(y_trueZ)], axis=-1)
 
     # mean error in cm
-    return Kb.mean(Kb.mean(Kb.sqrt(Kb.sum(Kb.square(y_pred - y_true), axis=-1)), axis=-1), axis=-1)
+    return Kb.mean(Kb.mean(Kb.sqrt(Kb.sum(Kb.square(y_pred - y_true), axis=-1)), axis=-1),
+                   axis=-1)
+
+
+def mean_avg_precision(y_true, y_pred):
+    y_pred = Reshape((numJoints, 3))(y_pred)
+    y_true = Reshape((numJoints, 3))(y_true)  # shape=(batch, numJoints, 3)
+
+    y_pred = unscale_to_cm(y_pred, data=dataset)
+    y_true = unscale_to_cm(y_true, data=dataset)
+
+    dist = Kb.sqrt(Kb.sum(Kb.square(y_pred - y_true), axis=-1))  # tensor of distances between joints pred and gtrue
+
+    logic = Kb.less_equal(dist, thresh)
+
+    res = Kb.switch(logic, Kb.ones_like(dist), Kb.zeros_like(dist))  # 1 if estimated correctly, else 0
+
+    return Kb.mean(Kb.sum(res, axis=-1) / numJoints, axis=-1)
 
 
 def huber_loss(y_true, y_pred):
@@ -387,15 +354,33 @@ def huber_loss(y_true, y_pred):
     return Kb.mean(Kb.switch(cond, squared_loss, linear_loss), axis=-1)
 
 
+def real_time_init(model, first_sample):
+    """ build model and run on first sample beforehand to achieve higher speed (especially on one by one feed)
+     than with model.predict """
+    get_output = Kb.function([model.layers[0].input, Kb.learning_phase()], [model.layers[-1].output])
+    model_output = get_output([first_sample, 0])[0]
+    return get_output
+
+
+def real_time_predict(test_x, get_output_func):
+    # run on the rest of test samples
+    # import time
+    # tic = time.time()
+    model_output = get_output_func([test_x, 0])[0]
+    # tac = time.time() - tic
+    # print(tac)
+    return model_output
+
+
 # learning rate schedule
 def step_decay(epoch):
-    initial_lrate = 0.0005
-    drop = 0.8  # 0.5
+    initial_lrate = 0.001  # 0.001 0.0005 TODO 0.0005
+    drop = 0.8  # 0.5 0.8
     epochs_drop = 1.0
     lrate = initial_lrate * pow(drop,
                                 np.floor(epoch / epochs_drop))  # pow(drop, np.floor((1 + epoch) / epochs_drop))
     if lrate < 0.00001:  # clip at 10^-5 to avoid getting stuck at local minima
-        lrate = 0.00001
+        lrate = 0.00001  # 0.00003 0.00001
     return lrate
 
 
@@ -407,26 +392,44 @@ if __name__ == "__main__":
     sess = tf.Session(config=config)
     set_session(sess)  # set this TensorFlow session as the default session for Keras
 
-    model = PBPE()
-    # model.summary(line_length=100)
+    # model, test_model = PBPE()
+    if segnet:
+        model = seg_net()
+    elif mymodel:
+        model = my_model()
+    else:
+        model, test_model = PBPE_new()
+
+    model.summary(line_length=100)
 
     losses = {
         "output1": "mean_absolute_error",  # huber_loss, mean_squared_error "mean_absolute_error"
         "output2": "categorical_crossentropy",  # segmentation
     }
 
-    get_custom_objects().update({'avg_error': avg_error, 'Kb': Kb})
+    get_custom_objects().update(
+        {'avg_error': avg_error, 'Kb': Kb, 'mean_avg_precision': mean_avg_precision,
+         'loss_func': loss_func})  # 'avg_error_proto': avg_error_proto, 'huber_loss': huber_loss
 
     Adam = Adam(lr=0.0, decay=0.0)  # to be set in lrScheduler
 
     # learning schedule callback
     lrate = LearningRateScheduler(step_decay)
 
+    name = 'mymodel_lr0.001_noproto_convs1x1_poolto1_512_256_1residual_4chan_denses512_256_120steps'
+
+    steps = 120
+
     # Tensorboard callback
-    tbCallBack = keras.callbacks.TensorBoard(log_dir='data/tensorboard/original', histogram_freq=0,
+    tbCallBack = keras.callbacks.TensorBoard(log_dir='data/tensorboard/' + dataset + '/' + name, histogram_freq=0,
                                              write_graph=True,
-                                             write_images=True, write_grads=False, batch_size=32)
-    callbacks_list = [lrate, tbCallBack]
+                                             write_images=True, write_grads=False, batch_size=batch_size)
+
+    checkpoint = keras.callbacks.ModelCheckpoint('data/models/' + dataset + '/{epoch:02d}eps_' + name + '.h5',
+                                                 verbose=1,
+                                                 period=5)
+
+    callbacks_list = [lrate, tbCallBack, checkpoint]
 
     # Load training, validation data (only once)
 
@@ -434,7 +437,7 @@ if __name__ == "__main__":
     # scaler = np.asarray([pose_scaler.min_, pose_scaler.scale_])
     # np.save('data/pose_scaler.npy', scaler)
 
-    # UBC_convert_pcl_files(index=5006, start=7, end=61, mode='train')
+    # UBC_convert_pcl_files(index=0, start=1, end=2, mode='train')
     # generate_regions_all(mode='train')
     # scale(mode='train')
 
@@ -442,69 +445,200 @@ if __name__ == "__main__":
     # generate_regions_all(mode='valid')
     # scale(mode='valid')  # with the same parameters as training set
 
-    # TODO currently its multi-view(pcls from 3 cameras merged to 1)
-    # TODO - single-view - export from matlab with generate_cloud_camera()
-
-    # generate_regions_all(mode='valid')
-
-    # with CustomObjectScope({'Kb': Kb}):
-    #
-    # model = load_model('data/models/10eps_mae_globalscaling_densenoact_lrdrop0.8_separatescaleposes_batchnormsegonly_nodropout.h5')
-
     # TODO Training
-    dataset = 'UBC'
-
-    [pcls_min, pcls_max] = np.load('data/' + dataset + '/train/pcls_minmax.npy')
-    [poses_min, poses_max] = np.load('data/' + dataset + '/train/poses_minmax.npy')
+    # validtotrain()
 
     # UBC_convert_region_files(37037, 39, 61, 'train')
 
-    # MHAD_loadpcls()
-    # p = np.load('data/MHAD/train/notscaledpcl/010356.npy')
-    # visualize_3D(p)
+    # mindex = 0
+    # MHAD_loadpcls(mode='train', start=1, end=12, index=0, singleview=False)  # notscaledpcl
+    # MHAD_load_poses(mode='train', start=1, end=12, index=0, singleview=False)  # notscaledpose
 
-    # scale_poses(mode='test')
-    # UBC_convert_pcl_files(index=0, start=1, end=21, mode='test')
-    # generate_regions_all(mode='train', data='UBC')
-    # scale(mode='train', data='UBC')
+    # MHAD_random_split(0.25, folders=['notscaledpclSW', 'notscaledposeSW', 'regionSW'], start=0, end=281222)
 
-    model.compile(optimizer=Adam,
-                  loss=losses, loss_weights=[1.0, 0.01],  # 0.1
-                  metrics={'output1': avg_error, 'output2': 'accuracy'})
+    # MHAD_load_poses(mode='train', start=1, end=13, index=84081, repetitions=(5, 6))  # notscaledpose
+    # generate_regions_all(mode='train', data=dataset)  # region
+    # MHAD_random_split(0.25, folders=['notscaledpose35j'], start=84081, end=112584)
 
-    workers = 8  # mp.cpu_count()
+    # print('train/test split done')
+    # find_minmax(data=dataset, mode='train', pcls=True)
+    # find_minmax(data=dataset, mode='train', pcls=False)  # poses
+    # scale(mode='train', data=dataset)
+    # scale_poses(mode='train', data=dataset)
+    # MHAD_loadpcls(mode='test', start=12, end=13, index=0, singleview=False)  # notscaledpcl
+    # MHAD_load_poses(mode='test', start=12, end=13, index=0, singleview=False)  # notscaledpose
+    # scale(mode='test', data=dataset)
+    # # scale_poses(mode='valid', data=dataset)
+    # scale_poses(mode='test', data=dataset)
 
-    train_generator = DataGenerator('data/' + dataset + '/train/', numPoints, numJoints, numRegions, steps=None,
-                                    batch_size=batch_size,
-                                    shuffle=True)
-    valid_generator = DataGenerator('data/' + dataset + '/valid/', numPoints, numJoints, numRegions, steps=None,
-                                    batch_size=batch_size,
-                                    shuffle=False)
+    # generate_regions_all(mode='train', data=dataset, start=None, end=None)  # region TODO end
+    # generate_regions_all(mode='test', data=dataset)
+    # MHAD_loadpcls(mode='test', start=1, end=13, index=0)
+    # MHAD_load_poses(mode='test', start=1, end=13, index=0, sameaspcls=True)
+    # ITOP_load()
 
-    model.fit_generator(generator=train_generator, epochs=10,  # validation_data=valid_generator,
-                        callbacks=callbacks_list, initial_epoch=0, use_multiprocessing=True,
-                        workers=workers, shuffle=True)
-    # save the model
-    model.save(
-        'data/models/10eps_mae_globalscaling_densenoact_lrdrop0.8_separatescaleposes_batchnormsegonly_nodropout_weights1.02.h5')
+    # centers = cluster('MHAD', k, numTrainSamples, numJoints, batch_size, fill)
+    # centers = np.load('data/' + dataset + '/train/pose_clusters50.npy')
+    #
+    # make_batch_files('train')
+
+    if singleview:
+        [pcls_min, pcls_max] = np.load('data/' + dataset + '/train/pcls_minmaxSW.npy')
+        [poses_min, poses_max] = np.load('data/' + dataset + '/train/poses_minmaxSW.npy')
+    elif test_method == '11subjects':
+        [pcls_min, pcls_max] = np.load('data/' + dataset + '/train/pcls_minmax_11subs.npy')
+        [poses_min, poses_max] = np.load('data/' + dataset + '/train/poses_minmax_11subs.npy')
+    else:
+        [pcls_min, pcls_max] = np.load('data/' + dataset + '/train/pcls_minmax.npy')
+        [poses_min, poses_max] = np.load('data/' + dataset + '/train/poses_minmax.npy')
+
+    # p = np.load('data/UBC/train/scaledpclglobalbatches/00588.npy')[30]  # TODO fix - some poses small range -0.2,-0.9
+    # p = np.reshape(p, (2048, 3))
+    # p = (p + 1) * (pcls_max - pcls_min) / 2 + pcls_min
+    # pose = np.load('data/UBC/train/posesglobalseparatebatches/00588.npy')[30]
+    # pose = np.reshape(pose, (numJoints, 3))
+    # pose = unscale_to_cm(pose, data='UBC')
+    # region = np.load('data/UBC/train/regionbatches/00588.npy')[30]
+    # visualize_3D(p, pose=pose, regions=region, numJoints=numJoints)
+    # visualize_3D_pose(pose, numJoints=29)
 
     # show an example from train set
-    # pcl = np.load('data/train/scaledpclglobal/05504.npy')
-    # pose = np.load('data/train/posesglobalseparate/05504.npy')
-    # region = np.load('data/train/region/05504.npy')
-    # visualize_3D(pcl, regions=region, pose=pose)
+    # pcl = np.load('data/MHAD/train/scaledpclglobalnoshift/075505.npy')
+    # pcl = (pcl + 1) * (pcls_max - pcls_min) / 2 + pcls_min
+    # pose = np.load('data/MHAD/train/posesglobalseparatenoshift/075505.npy')
+    # pose = (pose + 1) * (poses_max - poses_min) / 2 + poses_min
+    # region = np.load('data/MHAD/train/region/075505.npy')
+    # visualize_3D(pcl, regions=region, pose=pose, numJoints=numJoints)
+    if segnet:
+        metrics = ['accuracy']
+        lossf = 'categorical_crossentropy'
+        lossw = [1.]
+    else:
+        if mymodel:
+            metrics = [avg_error, mean_avg_precision]
+            lossf = 'mean_absolute_error'
+            lossw = [1.]
+        else:  # PBPE model
+            metrics = {'output1': [avg_error, mean_avg_precision], 'output2': 'accuracy'}
+            lossf = losses
+            lossw = [1.0, 0.01]  # TODO try bigger, original 0.1
 
-    # TODO omit the segmentation sub-network at test time (? dont know how yet)
-    # model.outputs = model.outputs[0]
+    model.compile(optimizer=Adam,
+                  loss=lossf, loss_weights=lossw,
+                  metrics=metrics)
+    # metrics=[avg_error_proto])
 
-    # [loss, output1_loss, output2_loss, output1_avg_error, output2_acc] = model.evaluate_generator(
-    #   valid_generator, use_multiprocessing=True, workers=workers, verbose=1, steps=None)
+    # test_model.compile(optimizer=Adam,
+    #                    loss="mean_absolute_error", metrics={'output1': [avg_error, mean_avg_precision]})
+
+    # model = load_model(
+    #     'data/models/UBC/10eps_mymodel_lr0.001_noproto_convs1x1_poolto1_512_256_1residual_globalavgpool_4chan.h5')
+
+    # model = load_model(
+    #     'data/models/UBC/10eps_segnet_lr0.001_4residuals_2.blockconvs512.h5')
+
+    # test_model = load_model(
+    #     'data/models/MHAD/test_models/20eps_batches_11subs_fixeddatafull_mae_denserelu_bnsegonly_weights1.01_lrdrop0.8_lr0.0005_3localfeats.h5')
+
+    workers = 3  # mp.cpu_count() # 3
+
+    if dataset == 'ITOP':
+        # print('loading data')
+        # train_x = np.load('data/ITOP/train/train_data_x.npy')
+        # train_y = np.load('data/ITOP/train/train_data_y.npy')
+        # regs = np.load('data/ITOP/train/train_data_regs.npy')  # shape= (numSamples, numPoints, 1)
+        # # train_regs = np.load('data/ITOP/train/train_data_regs_onehot.npy')
+        #
+        # # visualize_3D(train_x[15010], pose=train_y[15010], regions=regs[15010], numJoints=numJoints)
+        # # visualize_3D_pose(pose=train_y[15010], numJoints=numJoints)
+        # # print('reshaping')
+        # regs = regs.reshape((regs.shape[0], numPoints))
+        # train_x = np.reshape(train_x, newshape=(train_x.shape[0], numPoints, 1, 3))
+        # train_y = np.reshape(train_y, newshape=(train_y.shape[0], numJoints * 3))
+        #
+        # train_regs = np.eye(numRegions)[regs]
+        # train_regs = train_regs.reshape((train_regs.shape[0], numPoints, 1, numRegions))
+        # # print('encoding')
+        # # np.save('data/ITOP/train/train_data_regs_onehot.npy', train_regs)
+        # # print('one-hot encoded')
+        # [train_x, train_y, train_regs] = shuffle(train_x, train_y, train_regs, random_state=128)
+        # print('shuffled.')
+        test_x = np.load('data/ITOP/test/test_data_x.npy')
+        test_y = np.load('data/ITOP/test/test_data_y.npy')
+        test_x = np.reshape(test_x, newshape=(test_x.shape[0], numPoints, 1, 3))
+        test_y = np.reshape(test_y, newshape=(test_y.shape[0], numJoints * 3))
+
+        # model.fit(train_x, [train_y, train_regs], batch_size=batch_size, epochs=20, callbacks=callbacks_list,
+        #           # validation_split=0.1
+        #           # validation_data=(test_x, test_y, test_regs),
+        #           shuffle=True, initial_epoch=0)
+        [testloss, testavg_err] = test_model.evaluate(test_x, test_y, batch_size=batch_size)
+        print('test avg error: ', testavg_err)
+        predictions = test_model.predict(test_x, batch_size=batch_size)
+    else:
+        train_generator = DataGenerator('data/' + dataset + '/train/', numPoints, numJoints, numRegions, steps=steps,
+                                        batch_size=batch_size,
+                                        shuffle=True, fill=fill, loadBatches=True, singleview=singleview,
+                                        elevensubs=(test_method == '11subjects'), segnet=segnet, four_channels=mymodel)
+        if dataset == 'UBC':
+            valid_generator = DataGenerator('data/' + dataset + '/valid/', numPoints, numJoints, numRegions,
+                                            steps=steps,
+                                            batch_size=batch_size, fill=fill, singleview=singleview,
+                                            shuffle=False, segnet=segnet, four_channels=mymodel)
+        # test_generator = DataGenerator('data/' + dataset + '/test/', numPoints, numJoints, numRegions, steps=None,
+        #                                batch_size=batch_size, shuffle=False, fill=6, singleview=singleview)
+
+        test_generator = DataGenerator('data/' + dataset + '/test/', numPoints, numJoints, numRegions, steps=steps,
+                                       batch_size=batch_size, shuffle=False, fill=fill, singleview=singleview,
+                                       test=True, elevensubs=(test_method == '11subjects'), segnet=segnet,
+                                       four_channels=mymodel, predicted_regs=False)
+
+        model.fit_generator(generator=train_generator, epochs=10,
+                            validation_data=test_generator,
+                            # validation_data=(valid_generator if dataset == 'UBC' else test_generator),
+                            # TODO remove test generator from validation
+                            callbacks=callbacks_list, initial_epoch=0, use_multiprocessing=True,  # False
+                            workers=workers, shuffle=True, max_queue_size=10)  # 20
+    # # #     # test_model.fit_generator(generator=train_generator, epochs=10,  # validation_data=valid_generator,
+    # # #     #                     callbacks=callbacks_list, initial_epoch=0, use_multiprocessing=False,  # False
+    # # #     #                     workers=workers, shuffle=True, max_queue_size=10)  # 20
+    # # #
+    # # # # save the model
+    # model.save(
+    #     'data/models/' + dataset + '/' + name + '.h5') # is saved during checkpoints
+
+    # test_model.save('data/models/' + dataset + '/test_models/' + name + '.h5')
+
+    # Evaluate model (only regression branch)
+    # #
+    # eval_metrics = model.evaluate_generator(
+    #   test_generator, use_multiprocessing=True, workers=workers, max_queue_size=10, verbose=1, steps=None)
+
+    # Evaluate model (both branches)
     #
-    # print('avg error: ', output1_avg_error, 'region accuracy: ', output2_acc)
-    # predictions = model.predict_generator(valid_generator, use_multiprocessing=True, steps=1, workers=workers,
-    #                                       verbose=1)
+    # [loss, output1_loss, output2_loss, output1_avg_error, output1_map, output2_acc] = model.evaluate_generator(
+    #   test_generator, use_multiprocessing=False, workers=workers, max_queue_size=10, verbose=1, steps=None)
+    # # # #
+    # print('avg error: ', output1_avg_error)
+    #
+    # Predict regions from segnet and save
+    # pred = model.predict_generator(test_generator, use_multiprocessing=True, steps=None, workers=workers,
+    #                                            verbose=1)
+    # pred = np.argmax(pred, -1)
+    # pred = np.expand_dims(pred, -1)
+    # np.save('data/' + dataset + '/test/predicted_regs.npy', pred)
+
+    # predictions = np.load('data/MHAD/test/predictions_testmodel_20eps.npy')
     # poses = predictions[0]  # output1
     # poses = np.reshape(poses, (poses.shape[0], numJoints, 3))
+
+    # all test gt poses
+
+    # arr = np.empty((numTestSamples, numJoints, 3))
+    # for i in range(numTestSamples):
+    #     p = np.load('data/MHAD/test/posesglobalseparate/' + str(i).zfill(6) + '.npy')
+    #     arr[i] = p
+
     # for p in range(25, 27):
     #     poses[p] = unscale_to_cm(poses[p], mode='train')
     # #  TODO try to unscale with validation set params instead (rather not since one-by-one pipeline)
