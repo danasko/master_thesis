@@ -18,7 +18,8 @@ def shuffle_along_axis(x, regs, axis):
 class DataGenerator(Sequence):
 
     def __init__(self, path, numPoints, numJoints, numRegions, steps=None, batch_size=32, shuffle=False, fill=5,
-                 loadBatches=False, singleview=False, test=False, elevensubs=False, segnet=False, four_channels=False, predicted_regs=False):
+                 loadBatches=False, singleview=False, test=False, elevensubs=False, segnet=False, four_channels=False,
+                 predicted_regs=False):
         """Constructor can be expanded,
            with batch size, dimentation etc.
         """
@@ -33,7 +34,7 @@ class DataGenerator(Sequence):
         self.segnet = segnet
         self.four_channels = four_channels
         self.predicted_regs = predicted_regs
-        if predicted_regs:
+        if predicted_regs and test:
             self.regions = np.load(self.path + 'predicted_regs.npy')
         if loadBatches:
             if singleview:
@@ -107,8 +108,12 @@ class DataGenerator(Sequence):
                 if not self.segnet:
                     y = np.load(self.path + 'posesglobalseparateSWbatches/' + list_IDs_temp + '.npy')
                 if not self.test or self.four_channels:
-                    regs = np.load(self.path + 'regionSWbatches/' + list_IDs_temp + '.npy').reshape(
-                        (self.batch_size, self.numPoints))
+                    if self.predicted_regs:
+                        regs = np.load(self.path + 'regionSW_predicted_batches/' + list_IDs_temp + '.npy').reshape(
+                            (self.batch_size, self.numPoints))
+                    else:
+                        regs = np.load(self.path + 'regionSWbatches/' + list_IDs_temp + '.npy').reshape(
+                            (self.batch_size, self.numPoints))
             else:
                 # X = np.load(self.path + 'scaledpclglobalbatches/' + list_IDs_temp + '.npy')
 
@@ -117,22 +122,34 @@ class DataGenerator(Sequence):
                     if not self.segnet:
                         y = np.load(self.path + 'posesglobalseparate35jbatches/' + list_IDs_temp + '.npy')
                     if not self.test or self.four_channels:
-                        regs = np.load(self.path + 'region35jbatches/' + list_IDs_temp + '.npy').reshape(
-                            (self.batch_size, self.numPoints))
+                        if self.predicted_regs:
+                            regs = np.load(self.path + 'region35j_predicted_batches/' + list_IDs_temp + '.npy').reshape(
+                                (self.batch_size, self.numPoints))
+                        else:
+                            regs = np.load(self.path + 'region35jbatches/' + list_IDs_temp + '.npy').reshape(
+                                (self.batch_size, self.numPoints))
                 elif self.elevensubs:
                     X = np.load(self.path + 'scaledpclglobal_11subsbatches/' + list_IDs_temp + '.npy')
                     if not self.segnet:
                         y = np.load(self.path + 'posesglobalseparate_11subsbatches/' + list_IDs_temp + '.npy')
                     if not self.test or self.four_channels:
-                        regs = np.load(self.path + 'region_11subsbatches/' + list_IDs_temp + '.npy').reshape(
-                            (self.batch_size, self.numPoints))
+                        if self.predicted_regs:
+                            regs = np.load(self.path + 'region_11subs_predicted_batches/' + list_IDs_temp + '.npy').reshape(
+                                (self.batch_size, self.numPoints))
+                        else:
+                            regs = np.load(self.path + 'region_11subsbatches/' + list_IDs_temp + '.npy').reshape(
+                                (self.batch_size, self.numPoints))
                 else:
                     X = np.load(self.path + 'scaledpclglobalbatches/' + list_IDs_temp + '.npy')
                     if not self.segnet:
                         y = np.load(self.path + 'posesglobalseparatebatches/' + list_IDs_temp + '.npy')
                     if not self.test or self.four_channels:
-                        regs = np.load(self.path + 'regionbatches/' + list_IDs_temp + '.npy').reshape(
-                            (self.batch_size, self.numPoints))
+                        if self.predicted_regs:
+                            regs = np.load(self.path + 'regions_predicted_batches/' + list_IDs_temp + '.npy').reshape(
+                                (self.batch_size, self.numPoints))
+                        else:
+                            regs = np.load(self.path + 'regionbatches/' + list_IDs_temp + '.npy').reshape(
+                                (self.batch_size, self.numPoints))
             if self.four_channels:
                 regs = np.expand_dims(np.expand_dims(regs, -1), -1)
                 X = np.concatenate([X, regs], axis=-1)
@@ -183,8 +200,8 @@ class DataGenerator(Sequence):
                     regs = self.regions[int(ID)]
                 else:
                     regs = np.asarray(
-                    np.load(self.path + '/region' + name + '/' + ID + '.npy', allow_pickle=True).flatten(),
-                    dtype=int)
+                        np.load(self.path + '/region' + name + '/' + ID + '.npy', allow_pickle=True).flatten(),
+                        dtype=int)
                 if self.four_channels:
                     if not self.predicted_regs:
                         regs = np.expand_dims(np.expand_dims(regs, -1), -1)

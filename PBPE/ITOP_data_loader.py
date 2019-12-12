@@ -8,6 +8,7 @@ import codecs, json
 import preprocess
 import visualizer
 from scipy.io import loadmat
+from config import *
 
 joint_id_to_name = {
     0: 'Head',
@@ -121,4 +122,39 @@ class DataLoader:
 def rescale(x, lw, up):
     return lw + ((x - np.min(x)) / (np.max(x) - np.min(x))) * (up - lw)
 
+
+def load_ITOP_from_npy():
+    print('loading ITOP data...')
+    train_x = np.load('data/ITOP/train/train_data_x.npy')
+    train_y = np.load('data/ITOP/train/train_data_y.npy')
+    regs = np.load('data/ITOP/train/train_data_regs.npy')  # shape= (numSamples, numPoints, 1)
+    # print(regs.shape)
+    # # train_regs = np.load('data/ITOP/train/train_data_regs_onehot.npy')
+    #
+    # # visualize_3D(train_x[15010], pose=train_y[15010], regions=regs[15010], numJoints=numJoints)
+    # # visualize_3D_pose(pose=train_y[15010], numJoints=numJoints)
+    # # print('reshaping')
+    regs = regs.reshape((regs.shape[0], numPoints))
+    train_x = np.reshape(train_x, newshape=(train_x.shape[0], numPoints, 1, 3))
+    train_y = np.reshape(train_y, newshape=(train_y.shape[0], numJoints * 3))
+    #
+    train_regs = np.eye(numRegions)[regs]
+    train_regs = train_regs.reshape((train_regs.shape[0], numPoints, 1, numRegions))
+    # # print('encoding')
+    # # np.save('data/ITOP/train/train_data_regs_onehot.npy', train_regs)
+    # # print('one-hot encoded')
+    [train_x, train_y, train_regs] = shuffle(train_x, train_y, train_regs, random_state=128)
+    # print('shuffled.')
+    test_x = np.load('data/ITOP/test/test_data_x.npy')
+    test_y = np.load('data/ITOP/test/test_data_y.npy')
+    test_x = np.reshape(test_x, newshape=(test_x.shape[0], numPoints, 1, 3))
+    test_y = np.reshape(test_y, newshape=(test_y.shape[0], numJoints * 3))
+    test_regs = np.load('data/ITOP/test/test_data_regs.npy')
+    test_regs = test_regs.reshape((test_regs.shape[0], numPoints))
+    test_regs = np.eye(numRegions)[test_regs]
+    test_regs = test_regs.reshape((test_regs.shape[0], numPoints, 1, numRegions))
+
+    # print(test_regs.shape)
+    print('ITOP data loaded.')
+    return train_x, train_y, train_regs, test_x, test_y, test_regs
 # if __name__ == '__main__':

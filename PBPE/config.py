@@ -1,5 +1,5 @@
 
-dataset = 'UBC'
+dataset = 'ITOP'
 batch_size = 32
 k = 50
 centers = None
@@ -55,3 +55,12 @@ pcls_max = [-1000000, -1000000, -1000000]
 poses_min = [1000000, 1000000, 1000000]
 poses_max = [-1000000, -1000000, -1000000]
 
+# name = 'segnet_lr0.001_4residuals_2.blockconvs512'
+name = 'mymodel_lr0.0005_noproto_convs1x1_poolto1_512_256_1residual_nomaxpool_globalavgpool_4chan_reg_preds'
+
+steps = None
+
+# use predicted regions when running 4-chan model
+predicted_regs = False
+
+workers = 3  # mp.cpu_count()

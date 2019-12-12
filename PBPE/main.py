@@ -27,6 +27,7 @@ from visualizer import *
 from data_generator import *
 from data_loader import *
 from config import *
+from ITOP_data_loader import load_ITOP_from_npy
 
 
 # keras.backend.set_floatx('float64')
@@ -52,14 +53,15 @@ def my_model():
     shortcut1 = keras.layers.add([local_feature1_exp, local_feature2_exp, local_feature3])  # add
 
     # res1 = keras.layers.Activation('relu')(res1)  # a bez tohto
-    global_feature = MaxPooling2D(pool_size=(2048, 1))(shortcut1)
+
+    # global_feature = MaxPooling2D(pool_size=(2048, 1))(shortcut1)
 
     # local_feature2_exp = Conv2D(filters=2048, kernel_size=(1, 1))(local_feature2)
     # global_exp = Lambda(tile, arguments={'numPoints': 128})(
     #     global_feature)
     # global_feature = keras.layers.Activation('relu')(global_feature)
     f1 = Conv2D(filters=512, kernel_size=(1, 1),
-                kernel_initializer='glorot_normal')(global_feature)
+                kernel_initializer='glorot_normal')(shortcut1)
     f1a = keras.layers.Activation('relu')(f1)
     # f = Conv2D(filters=256, kernel_size=(2, 1),
     #                         activation='relu', kernel_initializer='glorot_normal')(f)
@@ -75,8 +77,8 @@ def my_model():
     #     global_feature)  # shape= (b, numPoints=2048, 1, 2048)
     # f = concatenate([local_feature2, local_feature3, global_feature_exp], axis=-1)
     # f = Conv2D(filters=256, kernel_size=(1,1), activation='relu', kernel_initializer='glorot_normal')(global_feature)
-    f = Flatten()(f2)
-    # f = keras.layers.GlobalAveragePooling2D()(f2)
+    # f = Flatten()(f2)
+    f = keras.layers.GlobalAveragePooling2D()(f2)
     f = Dense(512, kernel_initializer='glorot_normal', activation='relu')(f)
     f = Dense(256, kernel_initializer='glorot_normal', activation='relu')(f)
     # output1 = Dense(k, name='output1', activation='softmax', kernel_initializer='glorot_normal')(f)
@@ -372,9 +374,35 @@ def real_time_predict(test_x, get_output_func):
     return model_output
 
 
+def run_segnet(generator, mode='test', save=True):
+    # Predict regions from segnet and save
+    if mode == 'train':
+        get_output = Kb.function([model.layers[0].input, Kb.learning_phase()], [model.layers[-1].output])
+        for b_num in range(numTrainSamples // batch_size):
+            pcl_batch = np.load(
+                'data/' + dataset + '/' + mode + '/scaledpclglobalbatches/' + str(b_num + 1).zfill(fill) + '.npy')
+            # pred = model.predict(pcl_batch, batch_size=batch_size, steps=None)
+            pred = get_output([pcl_batch, 0])[0]
+            pred = np.argmax(pred, -1)
+            pred = np.expand_dims(pred, -1)
+            if save:
+                np.save(
+                    'data/' + dataset + '/' + mode + '/regions_predicted_batches/' + str(b_num + 1).zfill(
+                        fill) + '.npy', pred)
+    else:
+        pred = model.predict_generator(generator, use_multiprocessing=True, steps=None, workers=workers,
+                                       verbose=1)
+        if save:
+            np.save('data/' + dataset + '/' + mode + '/predicted_regs.npy', pred)
+        return pred
+
+
 # learning rate schedule
 def step_decay(epoch):
-    initial_lrate = 0.001  # 0.001 0.0005 TODO 0.0005
+    # if dataset == 'ITOP':
+    #     initial_lrate = 0.0005
+    # else:
+    initial_lrate = 0.001  # 0.001 0.0005
     drop = 0.8  # 0.5 0.8
     epochs_drop = 1.0
     lrate = initial_lrate * pow(drop,
@@ -415,10 +443,6 @@ if __name__ == "__main__":
 
     # learning schedule callback
     lrate = LearningRateScheduler(step_decay)
-
-    name = 'mymodel_lr0.001_noproto_convs1x1_poolto1_512_256_1residual_4chan_denses512_256_120steps'
-
-    steps = 120
 
     # Tensorboard callback
     tbCallBack = keras.callbacks.TensorBoard(log_dir='data/tensorboard/' + dataset + '/' + name, histogram_freq=0,
@@ -532,54 +556,33 @@ if __name__ == "__main__":
     #                    loss="mean_absolute_error", metrics={'output1': [avg_error, mean_avg_precision]})
 
     # model = load_model(
-    #     'data/models/UBC/10eps_mymodel_lr0.001_noproto_convs1x1_poolto1_512_256_1residual_globalavgpool_4chan.h5')
+    #     'data/models/'+dataset+'/10eps_mymodel_lr0.001_noproto_convs1x1_poolto1_512_256_1residual_globalavgpool_4chan_reg_preds.h5')
 
-    # model = load_model(
-    #     'data/models/UBC/10eps_segnet_lr0.001_4residuals_2.blockconvs512.h5')
+    # model = load_model(z
+    #     'data/models/' + dataset + '/10eps_segnet_lr0.001_4residuals_2.blockconvs512.h5')
 
     # test_model = load_model(
     #     'data/models/MHAD/test_models/20eps_batches_11subs_fixeddatafull_mae_denserelu_bnsegonly_weights1.01_lrdrop0.8_lr0.0005_3localfeats.h5')
 
-    workers = 3  # mp.cpu_count() # 3
-
     if dataset == 'ITOP':
-        # print('loading data')
-        # train_x = np.load('data/ITOP/train/train_data_x.npy')
-        # train_y = np.load('data/ITOP/train/train_data_y.npy')
-        # regs = np.load('data/ITOP/train/train_data_regs.npy')  # shape= (numSamples, numPoints, 1)
-        # # train_regs = np.load('data/ITOP/train/train_data_regs_onehot.npy')
-        #
-        # # visualize_3D(train_x[15010], pose=train_y[15010], regions=regs[15010], numJoints=numJoints)
-        # # visualize_3D_pose(pose=train_y[15010], numJoints=numJoints)
-        # # print('reshaping')
-        # regs = regs.reshape((regs.shape[0], numPoints))
-        # train_x = np.reshape(train_x, newshape=(train_x.shape[0], numPoints, 1, 3))
-        # train_y = np.reshape(train_y, newshape=(train_y.shape[0], numJoints * 3))
-        #
-        # train_regs = np.eye(numRegions)[regs]
-        # train_regs = train_regs.reshape((train_regs.shape[0], numPoints, 1, numRegions))
-        # # print('encoding')
-        # # np.save('data/ITOP/train/train_data_regs_onehot.npy', train_regs)
-        # # print('one-hot encoded')
-        # [train_x, train_y, train_regs] = shuffle(train_x, train_y, train_regs, random_state=128)
-        # print('shuffled.')
-        test_x = np.load('data/ITOP/test/test_data_x.npy')
-        test_y = np.load('data/ITOP/test/test_data_y.npy')
-        test_x = np.reshape(test_x, newshape=(test_x.shape[0], numPoints, 1, 3))
-        test_y = np.reshape(test_y, newshape=(test_y.shape[0], numJoints * 3))
-
-        # model.fit(train_x, [train_y, train_regs], batch_size=batch_size, epochs=20, callbacks=callbacks_list,
-        #           # validation_split=0.1
-        #           # validation_data=(test_x, test_y, test_regs),
-        #           shuffle=True, initial_epoch=0)
-        [testloss, testavg_err] = test_model.evaluate(test_x, test_y, batch_size=batch_size)
-        print('test avg error: ', testavg_err)
-        predictions = test_model.predict(test_x, batch_size=batch_size)
+        train_x, train_y, train_regs, test_x, test_y, test_regs = load_ITOP_from_npy()
+        pred_regs = np.load('data/ITOP/train/predicted_regs.npy')
+        test_pred_regs = np.load('data/ITOP/test/predicted_regs.npy')
+        test_x_exp = np.concatenate([test_x, test_pred_regs], axis=-1)
+        train_x_exp = np.concatenate([train_x, pred_regs], axis=-1)
+        model.fit(train_x_exp, train_y, batch_size=batch_size, epochs=10, callbacks=callbacks_list,
+                  # validation_split=0.1
+                  validation_data=(test_x_exp, test_y),
+                  shuffle=True, initial_epoch=0)
+        # [testloss, testavg_err] = test_model.evaluate(test_x, test_y, batch_size=batch_size)
+        # print('test avg error: ', testavg_err)
+        # predictions = test_model.predict(test_x, batch_size=batch_size)
     else:
         train_generator = DataGenerator('data/' + dataset + '/train/', numPoints, numJoints, numRegions, steps=steps,
                                         batch_size=batch_size,
                                         shuffle=True, fill=fill, loadBatches=True, singleview=singleview,
-                                        elevensubs=(test_method == '11subjects'), segnet=segnet, four_channels=mymodel)
+                                        elevensubs=(test_method == '11subjects'), segnet=segnet, four_channels=mymodel,
+                                        predicted_regs=predicted_regs)
         if dataset == 'UBC':
             valid_generator = DataGenerator('data/' + dataset + '/valid/', numPoints, numJoints, numRegions,
                                             steps=steps,
@@ -591,14 +594,14 @@ if __name__ == "__main__":
         test_generator = DataGenerator('data/' + dataset + '/test/', numPoints, numJoints, numRegions, steps=steps,
                                        batch_size=batch_size, shuffle=False, fill=fill, singleview=singleview,
                                        test=True, elevensubs=(test_method == '11subjects'), segnet=segnet,
-                                       four_channels=mymodel, predicted_regs=False)
+                                       four_channels=mymodel, predicted_regs=predicted_regs)
 
-        model.fit_generator(generator=train_generator, epochs=10,
-                            validation_data=test_generator,
-                            # validation_data=(valid_generator if dataset == 'UBC' else test_generator),
-                            # TODO remove test generator from validation
-                            callbacks=callbacks_list, initial_epoch=0, use_multiprocessing=True,  # False
-                            workers=workers, shuffle=True, max_queue_size=10)  # 20
+        # model.fit_generator(generator=train_generator, epochs=10,
+        #                     # validation_data=test_generator,
+        #                     # validation_data=(valid_generator if dataset == 'UBC' else test_generator),
+        #                     # TODO remove test generator from validation
+        #                     callbacks=callbacks_list, initial_epoch=0, use_multiprocessing=True,  # False
+        #                     workers=workers, shuffle=True, max_queue_size=10)  # 20
     # # #     # test_model.fit_generator(generator=train_generator, epochs=10,  # validation_data=valid_generator,
     # # #     #                     callbacks=callbacks_list, initial_epoch=0, use_multiprocessing=False,  # False
     # # #     #                     workers=workers, shuffle=True, max_queue_size=10)  # 20
@@ -610,10 +613,11 @@ if __name__ == "__main__":
     # test_model.save('data/models/' + dataset + '/test_models/' + name + '.h5')
 
     # Evaluate model (only regression branch)
-    # #
+    #
     # eval_metrics = model.evaluate_generator(
-    #   test_generator, use_multiprocessing=True, workers=workers, max_queue_size=10, verbose=1, steps=None)
+    #     test_generator, use_multiprocessing=True, workers=workers, max_queue_size=10, verbose=1, steps=None)
 
+    # TODO wrap these into separate functions
     # Evaluate model (both branches)
     #
     # [loss, output1_loss, output2_loss, output1_avg_error, output1_map, output2_acc] = model.evaluate_generator(
@@ -621,12 +625,8 @@ if __name__ == "__main__":
     # # # #
     # print('avg error: ', output1_avg_error)
     #
-    # Predict regions from segnet and save
-    # pred = model.predict_generator(test_generator, use_multiprocessing=True, steps=None, workers=workers,
-    #                                            verbose=1)
-    # pred = np.argmax(pred, -1)
-    # pred = np.expand_dims(pred, -1)
-    # np.save('data/' + dataset + '/test/predicted_regs.npy', pred)
+    # TODO run segnet and save predicted regions
+    # pred_regs = run_segnet(generator=None, mode='train', save=True)
 
     # predictions = np.load('data/MHAD/test/predictions_testmodel_20eps.npy')
     # poses = predictions[0]  # output1
