@@ -1,0 +1,187 @@
+\documentclass[12pt, a4paper, oneside]{book}
+\usepackage[hidelinks]{hyperref}
+\usepackage[slovak, english]{babel}
+\usepackage{epsfig}
+\usepackage{epstopdf}
+\usepackage[chapter]{algorithm}
+\usepackage{algorithmic}
+\usepackage{listings}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage{multirow}
+\usepackage{color}
+\usepackage{url}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{setspace}
+\usepackage{tabularx}
+\usepackage{textcomp}
+\usepackage{caption}
+\usepackage[numbers]{natbib}
+
+\selectlanguage{english}
+\setstretch{1.5}
+%\renewcommand\baselinestretch{1.5} % riadkovanie jeden a pol
+
+\newcommand\mftitle{Skeleton Tracking using Deep Learning}
+\newcommand\mfthesistype{Master thesis}
+\newcommand\mfauthor{Bc. Dana Škorvánková}
+\newcommand\mfadvisor{RNDr. Martin Madaras, PhD.}
+\newcommand\mfplacedate{Bratislava, 2019}
+\newcommand\mfuniversity{COMENIUS UNIVERSITY BRATISLAVA}
+\newcommand\mffaculty{FACULTY OF MATHEMATICS, PHYSICS AND INFORMATICS}
+\newcommand{\sub}[1]{$_{\text{#1}}$}
+\newcommand{\reference}[1]{č.~\ref{#1}}
+\newcommand{\imageHeight}{180px}
+
+\ifx\pdfoutput\undefined\relax\else\pdfinfo{ /Title (\mftitle) /Author (\mfauthor) /Creator (PDFLaTeX) } \fi
+
+\begin{document}
+
+\frontmatter
+
+\thispagestyle{empty}
+
+\noindent
+\begin{minipage}{\textwidth}
+\begin{center}
+\textbf{\mfuniversity \\
+\mffaculty}
+\end{center}
+\end{minipage}
+
+\vfill
+\begin{figure}[!hbt]
+	\begin{center}
+		\includegraphics{images/logo_fmph}
+		\label{img:logo}
+	\end{center}
+\end{figure}
+\begin{center}
+	\begin{minipage}{0.8\textwidth}
+		\centerline{\textbf{\Large\MakeUppercase{\mftitle}}}
+		\smallskip
+		\centerline{\mfthesistype}
+	\end{minipage}
+\end{center}
+\vfill
+2019 \hfill
+\mfauthor
+\eject 
+% koniec obalu
+
+\thispagestyle{empty}
+
+\noindent
+\begin{minipage}{\textwidth}
+\begin{center}
+\textbf{\mfuniversity \\
+\mffaculty}
+\end{center}
+\end{minipage}
+
+\vfill
+\begin{figure}[!hbt]
+\begin{center}
+\includegraphics{images/logo_fmph_dark}
+\label{img:logo_dark}
+\end{center}
+\end{figure}
+\begin{center}
+\begin{minipage}{0.8\textwidth}
+\centerline{\textbf{\Large\MakeUppercase{\mftitle}}}
+\smallskip
+\centerline{\mfthesistype}
+\end{minipage}
+\end{center}
+\vfill
+\begin{tabular}{l l}
+%Registration number: & 40a99bd8-3cb6-4534-9330-c7fd9b5e5ca4 \\
+Program of Study: & Applied Informatics\\
+Field of Study: & 2511 Applied Informatics\\
+Department: & Department of Applied Informatics\\
+Supervisor: & \mfadvisor
+\end{tabular}
+\vfill
+\noindent
+\mfplacedate \hfill
+\mfauthor
+\eject 
+% koniec titulneho listu
+
+%\thispagestyle{empty}
+%\includegraphics[width=\textwidth]{images/zadanie}
+%\vfill
+%\eject
+% koniec zadania
+
+\thispagestyle{empty}
+
+
+\begin{figure}[H]
+\begin{center}
+\makebox[\textwidth]{\includegraphics[width=\paperwidth]{images/master_thesis_assignment}}
+\label{img:zadanie}
+\end{center}
+\end{figure}
+
+{~}\vspace{12cm}
+
+\noindent
+\begin{minipage}{0.25\textwidth}~\end{minipage}
+\begin{minipage}{0.75\textwidth}
+I hereby declare I wrote this thesis by myself, only with the help of
+referenced literature, under the careful supervision of my thesis
+supervisor.
+\newline \newline
+\end{minipage}
+\vfill
+~ \hfill {\hbox to 6cm{\dotfill}} \\
+\mfplacedate \hfill \mfauthor
+\vfill\eject 
+
+
+\chapter*{Acknowledgement}\label{chap:thank_you}
+I would like to thank ...
+
+\chapter*{Abstrakt}\label{chap:abstract_sk}
+Abstrakt...
+
+~\\
+Kľúčové slová: odhad pozície kostry človeka, hlboké učenie, neurónové siete, mračná bodov
+\vfill\eject 
+
+\chapter*{Abstract}\label{chap:abstract_en}
+Abstract...
+
+~\\
+Keywords: human pose estimation, deep learning, neural networks, point clouds
+\vfill\eject 
+
+
+\tableofcontents
+
+\listoftables
+\listoffigures
+
+\mainmatter
+
+\input 01intro.tex
+\input 02motivation.tex
+\input 03overview.tex
+\input 04related_work.tex
+\input 05proposal.tex
+\input 06implementation.tex
+\input 07results.tex
+\input 08conclusion.tex
+
+\backmatter
+
+\nocite{*}
+\bibliographystyle{authordate1}
+\bibliography{references}
+
+
+
+\end{document}

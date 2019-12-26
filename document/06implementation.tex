@@ -1,0 +1,125 @@
+\chapter{Implementation}\label{chap:implementation}
+
+
+\section{Deep Depth Pose model}
+In this section, we are going to describe our implementation of the DDP model (proposed in \cite{Marin18jvcir}) in the Keras framework. The follow-up additional modifications of the model are presented at the end of the section.\par
+\vspace{5mm}
+\noindent
+The DDP model is based on the idea of linearly combining the predefined prototype poses to obtain the resulting pose estimation. The set of prototype poses is produced by clustering the training dataset into \textit{K} clusters, \textit{K} being a hyperparameter of the network. The output of the model represents \textit{K} weights, each corresponding to one of the prototype poses. The final estimated pose is then obtained as a sum of the weighted prototypes.
+
+
+\subsection{Model structure}
+
+The architecure of the DDP model itself is relatively simple. The model is actually not very deep, it consists of five convolutional blocks, each followed by ReLU activation. First three blocks also contain a pooling layer, as indicated in Fig \ref{fig:ddp}. After the convolutional blocks, there are three fully-connected layers. The number of neurons in the output layer is a hyperparameter set to the number of prototype poses clustered from the dataset. \par
+
+\vspace{5mm}
+\begin{figure}[H]
+\begin{center}
+  \includegraphics[width=\textwidth]{images/implementation/ddp.PNG}
+  \caption[Deep Depth Pose model architecture \cite{Marin18jvcir}.]{Deep Depth Pose model architecture \cite{Marin18jvcir} (\textit{P} stands for pooling layer, \textit{Dr} indicates dropout, \textit{K} is the number of prototype poses).}
+  \label{fig:ddp}
+\end{center}
+\end{figure}
+
+
+\subsection{Loss function}
+
+\subsection{Initialization}
+
+\subsubsection{Weights}	
+
+\subsubsection{Hyperparameters}
+
+\subsection{Data pre-processing}
+
+% mention using only SIDE (front) part of ITOP dataset
+
+%\subsection{Train phase}
+%
+%\subsection{Test phase}
+
+\subsection{Modifications}
+This section introduces several modifications we made to the proposed model, in order to decrease the mean error of the predictions. Since the experience of the researchers is that the implementation of the same model in different framework sometimes leads to different results, we diverted from the original architecture of the model, as well as the optimization parameters.\par
+\vspace{5mm}
+%\vspace{5mm}
+\begin{figure}[H]
+\begin{center}
+  \includegraphics[width=\textwidth]{images/implementation/mddp.png}
+  \caption[Our modification of the original DDP model architecture.]{Our modification of the original DDP model architecture\break (\textit{K} stands for the number of prototype poses).}
+  \label{fig:mddp}
+\end{center}
+\end{figure}
+
+\noindent
+However, still inspired by the DDP model, we have built a slightly deeper, more complex model, in an attempt to improve the final estimations. We used the ITOP dataset for the evaluation of this model.
+The architecture of the modified DDP network is shown in Fig. \ref{fig:mddp}. As shown in the figure, we significantly increased the amount of drop-out layers, as the model tended to overfit the training data. Aside from the training data, the experiments have shown that even though the test set is sufficiently representative (that is, retains the distribution of the training set), the error on the test data is by far worse than the error on previously unseen data obtained by random sampling of the training set (used as a validation set). This is probably caused by the fact, that the input data is formed by a sequence of video frames, thus many subsequent samples captures almost the same content. As a result, a lot of the validation samples are nearly the same as the ones used for training. The results on the test set of the ITOP dataset are reported and discussed in Chapter 7.
+
+
+
+\section{Point-Based Pose Estimation model}
+
+
+\subsection{Model structure}
+
+% .. without the segmentation sub-network, the model tends to slightly overfit the train data. The loss of the auxiliary segmentation branch is engaged with weight \textit{w=0.01} to help the model generalize better on previously unseen data.
+
+
+\subsection{Data pre-processing}
+
+\subsubsection{ITOP}
+
+% ..TODO text + ref. Fig. \ref{fig:itop_seg} 
+
+\begin{figure}[H]
+\begin{center}
+  \includegraphics[height=140px]{images/implementation/itop_seg.png}
+  \caption[Sample point cloud from ITOP-front dataset \cite{haque2016viewpoint}.]{ Sample point cloud from ITOP-front dataset \cite{haque2016viewpoint}, left – before, right – after segmentation.}
+  \label{fig:itop_seg}
+\end{center}
+\end{figure}
+
+\subsubsection{UBC3V}
+
+Depending on the single or multi-view approach, the input point clouds are treated each as a single sample, or the different viewpoints of the same frame are merged into a single point cloud. In case of the UBC3V dataset, samples from three cameras are merged together. % TODO vysvetlit preco, .. obsahuje pomerne zlozite pozy
+\par
+\vspace{5mm}
+\noindent
+As the next pre-processing step, the point clouds were subsampled to the specified number of points (2048 points in our case) using the farthest point sampling technique. The input point clouds and the corresponding joint locations were normalized to the range [-1, 1] using the minimum and maximum values of the whole training set. Concerning the validation and test data, there were two options, how to normalize them – either using the scaling parameters of the training set, or scale the validation and test set to the specified range (with its own parameters). However, since the model is designed to work in real-time, the test data will most likely be fed into the network one-by-one, in which case, the only possible option is scaling using the parameters of the train set.\par
+\vspace{5mm}
+\noindent
+In order to increase the number of joints in the skeletal model, in some of the experiments, the interpolation of the joint locations was performed as another part of the pre-processing pipeline.  \textcolor{red}{TODO compare 29 vs 35 joints in Table ..} It is interesting to observe how the number of joints in the skeleton (and the complexity of the model) influences the pose estimation results.
+
+\subsubsection{MHAD}
+% TODO rozpisat podrobnejsie ?
+The MHAD dataset provides each frame captured from two camera viewpoints, one situated in the front, the other one in the back of the subject.
+Based on existing studies, inference from multi-view input data is expected to give more accurate results, however the single-view based estimation is far more useful in most of the real-time applications. Therefore, we have carried out experiments inferring from multi-view, as well as single-view input data.\par
+\vspace{5mm}
+
+\begin{figure}[H]
+\begin{center}
+  \includegraphics[height=140px]{images/implementation/mhad.png}
+  \caption[Sample point cloud from MHAD dataset \cite{Vidal:2013:BMC:2478277.2478412}.]{ Sample point cloud from MHAD dataset \cite{Vidal:2013:BMC:2478277.2478412} a) before segmentation, b) after removing the background and floor, c) after final clustering.}
+  \label{fig:mhad}
+\end{center}
+\end{figure}
+
+\noindent
+Since this dataset captures real-world data, the depth data contain a lot of noise. Therefore, we consider suitable preprocessing as a very important step. First, the background wall and ground floor are removed by MSAC plane fitting (which is a variation of RANSAC algorithm). Then, the segmentation of the point cloud into clusters based on Euclidean distance is used, and the biggest cluster is considered the desired subject. Fig. \ref{fig:mhad} depicts a sample from MHAD dataset, before and after applying the segmentation pipeline.\par
+
+\vspace{5mm}
+\noindent
+The stated dataset does not provide any partition into train and test data. Thus, the test data was selected as randomly sampled 25\% of the whole dataset during the experiments, while the rest was marked as the train set.
+
+
+ \section{Four-channel Pose Estimation}
+
+\vspace{5mm}
+\begin{figure}[H]
+\begin{center}
+  \includegraphics[width=\textwidth]{images/implementation/4chan_pipeline.png}
+  \caption[The Four-channel Pose Estimation pipeline.]{ The Four-channel Pose Estimation pipeline: First, point clouds are segmented into body regions in the segmentation network (up), then the input point clouds are concatenated with the predicted body regions as a fourth channel, and are fed into the regression network (down).}
+  \label{fig:4chan_pipeline}
+\end{center}
+\end{figure}
+
+

@@ -1,0 +1,103 @@
+\begin{thebibliography}{}
+
+\bibitem[\protect\citename{Ali, }2019]{Ali19}
+Ali, Ashar. 2019 (May).
+\newblock {\em 3D Human Pose Estimation}.
+\newblock MS Thesis, Georgia Institute of Technology.
+
+\bibitem[\protect\citename{Chou {\em et~al.},
+  }2017]{DBLP:journals/corr/ChouCC17}
+Chou, Chia{-}Jung, Chien, Jui{-}Ting, \& Chen, Hwann{-}Tzong. 2017.
+\newblock Self Adversarial Training for Human Pose Estimation.
+\newblock {\em CoRR}, {\bf abs/1707.02439}.
+
+\bibitem[\protect\citename{Haque {\em et~al.}, }2016]{haque2016viewpoint}
+Haque, Albert, Peng, Boya, Luo, Zelun, Alahi, Alexandre, Yeung, Serena, \&
+  Fei-Fei, Li. 2016 (October).
+\newblock Towards Viewpoint Invariant 3D Human Pose Estimation.
+\newblock {\em In:} {\em European Conference on Computer Vision (ECCV)}.
+
+\bibitem[\protect\citename{Marin-Jimenez {\em et~al.}, }2018]{Marin18jvcir}
+Marin-Jimenez, M.J., Romero-Ramirez, F.J., Mu\~noz Salinas, R., \&
+  Medina-Carnincer, R. 2018.
+\newblock 3D Pose Estimation from Depth Maps using a Deep combination of Poses.
+\newblock {\em Journal of Visual Communication and Image Representation}.
+\newblock In press.
+
+\bibitem[\protect\citename{Mehta {\em et~al.}, }2017a]{mono-3dhp2017}
+Mehta, Dushyant, Rhodin, Helge, Casas, Dan, Fua, Pascal, Sotnychenko,
+  Oleksandr, Xu, Weipeng, \& Theobalt, Christian. 2017a.
+\newblock Monocular 3D Human Pose Estimation In The Wild Using Improved CNN
+  Supervision.
+\newblock {\em In:} {\em 3D Vision (3DV), 2017 Fifth International Conference
+  on}.
+\newblock IEEE.
+
+\bibitem[\protect\citename{Mehta {\em et~al.}, }2017b]{VNect_SIGGRAPH2017}
+Mehta, Dushyant, Sridhar, Srinath, Sotnychenko, Oleksandr, Rhodin, Helge,
+  Shafiei, Mohammad, Seidel, Hans-Peter, Xu, Weipeng, Casas, Dan, \& Theobalt,
+  Christian. 2017b (July).
+\newblock VNect: Real-time 3D Human Pose Estimation with a Single RGB Camera.
+\newblock  vol. 36.
+
+\bibitem[\protect\citename{Mehta {\em et~al.},
+  }2019]{DBLP:journals/corr/abs-1907-00837}
+Mehta, Dushyant, Sotnychenko, Oleksandr, Mueller, Franziska, Xu, Weipeng,
+  Elgharib, Mohamed, Fua, Pascal, Seidel, Hans{-}Peter, Rhodin, Helge,
+  Pons{-}Moll, Gerard, \& Theobalt, Christian. 2019.
+\newblock XNect: Real-time Multi-person 3D Human Pose Estimation with a Single
+  {RGB} Camera.
+\newblock {\em CoRR}, {\bf abs/1907.00837}.
+
+\bibitem[\protect\citename{Moon {\em et~al.},
+  }2017]{DBLP:journals/corr/abs-1711-07399}
+Moon, Gyeongsik, Chang, Ju~Yong, \& Lee, Kyoung~Mu. 2017.
+\newblock V2V-PoseNet: Voxel-to-Voxel Prediction Network for Accurate 3D Hand
+  and Human Pose Estimation from a Single Depth Map.
+\newblock {\em CoRR}, {\bf abs/1711.07399}.
+
+\bibitem[\protect\citename{Newell {\em et~al.},
+  }2016]{DBLP:journals/corr/NewellYD16}
+Newell, Alejandro, Yang, Kaiyu, \& Deng, Jia. 2016.
+\newblock Stacked Hourglass Networks for Human Pose Estimation.
+\newblock {\em CoRR}, {\bf abs/1603.06937}.
+
+\bibitem[\protect\citename{Qi {\em et~al.}, }2016]{DBLP:journals/corr/QiSMG16}
+Qi, Charles~Ruizhongtai, Su, Hao, Mo, Kaichun, \& Guibas, Leonidas~J. 2016.
+\newblock PointNet: Deep Learning on Point Sets for 3D Classification and
+  Segmentation.
+\newblock {\em CoRR}, {\bf abs/1612.00593}.
+
+\bibitem[\protect\citename{Ren {\em et~al.}, }2015]{NIPS2015_5638}
+Ren, Shaoqing, He, Kaiming, Girshick, Ross, \& Sun, Jian. 2015.
+\newblock Faster R-CNN: Towards Real-Time Object Detection with Region Proposal
+  Networks.
+\newblock {\em Pages  91--99 of:} Cortes, C., Lawrence, N.~D., Lee, D.~D.,
+  Sugiyama, M., \& Garnett, R. (eds), {\em Advances in Neural Information
+  Processing Systems 28}.
+\newblock Curran Associates, Inc.
+
+\bibitem[\protect\citename{Rogez {\em et~al.}, }2019]{lcrnet}
+Rogez, Grégory, Weinzaepfel, Philippe, \& Schmid, Cordelia. 2019.
+\newblock LCR-Net++: Multi-person 2D and 3D Pose Detection in Natural Images.
+\newblock {\em IEEE Transactions on Pattern Analysis and Machine Intelligence},
+  01.
+
+\bibitem[\protect\citename{Shafaei \& Little, }2016]{Shafaei16}
+Shafaei, Alireza, \& Little, James~J. 2016.
+\newblock Real-Time Human Motion Capture with Multiple Depth Cameras.
+\newblock {\em In:} {\em Proceedings of the 13th Conference on Computer and
+  Robot Vision}.
+\newblock Canadian Image Processing and Pattern Recognition Society (CIPPRS).
+
+\bibitem[\protect\citename{Vidal {\em et~al.},
+  }2013]{Vidal:2013:BMC:2478277.2478412}
+Vidal, Rene, Bajcsy, Ruzena, Ofli, Ferda, Chaudhry, Rizwan, \& Kurillo,
+  Gregorij. 2013.
+\newblock Berkeley MHAD: A Comprehensive Multimodal Human Action Database.
+\newblock {\em Pages  53--60 of:} {\em Proceedings of the 2013 IEEE Workshop on
+  Applications of Computer Vision (WACV)}.
+\newblock WACV '13.
+\newblock Washington, DC, USA: IEEE Computer Society.
+
+\end{thebibliography}
