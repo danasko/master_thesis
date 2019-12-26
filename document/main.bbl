@@ -17,6 +17,20 @@ Haque, Albert, Peng, Boya, Luo, Zelun, Alahi, Alexandre, Yeung, Serena, \&
 \newblock Towards Viewpoint Invariant 3D Human Pose Estimation.
 \newblock {\em In:} {\em European Conference on Computer Vision (ECCV)}.
 
+\bibitem[\protect\citename{Joo {\em et~al.}, }2017]{Joo_2017_TPAMI}
+Joo, Hanbyul, Simon, Tomas, Li, Xulong, Liu, Hao, Tan, Lei, Gui, Lin, Banerjee,
+  Sean, Godisart, Timothy~Scott, Nabbe, Bart, Matthews, Iain, Kanade, Takeo,
+  Nobuhara, Shohei, \& Sheikh, Yaser. 2017.
+\newblock Panoptic Studio: A Massively Multiview System for Social Interaction
+  Capture.
+\newblock {\em IEEE Transactions on Pattern Analysis and Machine Intelligence}.
+
+\bibitem[\protect\citename{Mann \& Whitney, }1947]{mann1947}
+Mann, H.~B., \& Whitney, D.~R. 1947.
+\newblock On a Test of Whether one of Two Random Variables is Stochastically
+  Larger than the Other.
+\newblock {\em Ann. Math. Statist.}, {\bf 18}(1), 50--60.
+
 \bibitem[\protect\citename{Marin-Jimenez {\em et~al.}, }2018]{Marin18jvcir}
 Marin-Jimenez, M.J., Romero-Ramirez, F.J., Mu\~noz Salinas, R., \&
   Medina-Carnincer, R. 2018.
@@ -68,6 +82,12 @@ Qi, Charles~Ruizhongtai, Su, Hao, Mo, Kaichun, \& Guibas, Leonidas~J. 2016.
   Segmentation.
 \newblock {\em CoRR}, {\bf abs/1612.00593}.
 
+\bibitem[\protect\citename{Qi {\em et~al.}, }2017]{DBLP:journals/corr/QiYSG17}
+Qi, Charles~Ruizhongtai, Yi, Li, Su, Hao, \& Guibas, Leonidas~J. 2017.
+\newblock PointNet++: Deep Hierarchical Feature Learning on Point Sets in a
+  Metric Space.
+\newblock {\em CoRR}, {\bf abs/1706.02413}.
+
 \bibitem[\protect\citename{Ren {\em et~al.}, }2015]{NIPS2015_5638}
 Ren, Shaoqing, He, Kaiming, Girshick, Ross, \& Sun, Jian. 2015.
 \newblock Faster R-CNN: Towards Real-Time Object Detection with Region Proposal
@@ -99,5 +119,11 @@ Vidal, Rene, Bajcsy, Ruzena, Ofli, Ferda, Chaudhry, Rizwan, \& Kurillo,
   Applications of Computer Vision (WACV)}.
 \newblock WACV '13.
 \newblock Washington, DC, USA: IEEE Computer Society.
+
+\bibitem[\protect\citename{Wu {\em et~al.},
+  }2018]{DBLP:journals/corr/abs-1811-07246}
+Wu, Wenxuan, Qi, Zhongang, \& Li, Fuxin. 2018.
+\newblock PointConv: Deep Convolutional Networks on 3D Point Clouds.
+\newblock {\em CoRR}, {\bf abs/1811.07246}.
 
 \end{thebibliography}

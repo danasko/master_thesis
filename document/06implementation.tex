@@ -5,7 +5,7 @@
 In this section, we are going to describe our implementation of the DDP model (proposed in \cite{Marin18jvcir}) in the Keras framework. The follow-up additional modifications of the model are presented at the end of the section.\par
 \vspace{5mm}
 \noindent
-The DDP model is based on the idea of linearly combining the predefined prototype poses to obtain the resulting pose estimation. The set of prototype poses is produced by clustering the training dataset into \textit{K} clusters, \textit{K} being a hyperparameter of the network. The output of the model represents \textit{K} weights, each corresponding to one of the prototype poses. The final estimated pose is then obtained as a sum of the weighted prototypes.
+The DDP model is based on the idea of linearly combining the predefined prototype poses to obtain the resulting pose estimation. The set of prototype poses is produced by clustering the training dataset into $K$ clusters, $K$ being a hyperparameter of the network. The output of the model represents $K$ weights, each corresponding to one of the prototype poses. The final estimated pose is then obtained as a sum of the weighted prototypes.
 
 
 \subsection{Model structure}
@@ -16,7 +16,7 @@ The architecure of the DDP model itself is relatively simple. The model is actua
 \begin{figure}[H]
 \begin{center}
   \includegraphics[width=\textwidth]{images/implementation/ddp.PNG}
-  \caption[Deep Depth Pose model architecture \cite{Marin18jvcir}.]{Deep Depth Pose model architecture \cite{Marin18jvcir} (\textit{P} stands for pooling layer, \textit{Dr} indicates dropout, \textit{K} is the number of prototype poses).}
+  \caption[Deep Depth Pose model architecture \cite{Marin18jvcir}.]{Deep Depth Pose model architecture \cite{Marin18jvcir} (\textit{P} stands for pooling layer, \textit{Dr} indicates dropout, $K$ is the number of prototype poses).}
   \label{fig:ddp}
 \end{center}
 \end{figure}
@@ -24,19 +24,21 @@ The architecure of the DDP model itself is relatively simple. The model is actua
 
 \subsection{Loss function}
 
-The loss function used during training the model is defined as huber loss with a regularization term, as described in Eq. \ref{eq:huberloss}, where $\mathcal{L}_R$ is the huber loss used as a regression loss. 
+The loss function used during training the model is defined as huber loss with a regularization term, as described in Eq. \ref{eq:huberloss}, where $\mathcal{L}_R$ is the huber (regression) loss.\par
 
 \begin{equation}
 \mathcal{L}_{DDP}(g(\mathbf{D}, \theta), \mathbf{C}, \mathbf{p}, \alpha) = (1 - \alpha) \cdot \mathcal{L}_R(\mathbf{C} \times g(\mathbf{D}, \theta), \mathbf{p}) + \alpha \cdot \|g(\mathbf{D}, \theta)\|_1 \label{eq:huberloss}
 \end{equation} 
 
+\noindent In the equation above, $g(\mathbf{D}, \theta)$ represents a non-linear function computed by the neural model on the input depth map $\mathbf{D}$ with trainable parameters $\theta$, returning a column vector of length $K$ (number of clustered prototype poses), $\mathbf{C}$ is a matrix with $K$ columns containing prototype poses, $\mathbf{p}$ stands for the vectorized ground-truth pose,  and $\alpha$ is a regularization coefficient  – a hyperparameter to control the magnitude of the resulting weights of the prototypes.
+
 \subsection{Initialization}
 
-\subsubsection{Weights}	
-
-\subsubsection{Hyperparameters}
+The values of the model's hyperparameters from the original DDP paper were chosen using the 'Mann-Whitney U-test' \cite{mann1947}, thus determining, whether the median difference between pairs of configurations are statistically significant. The value of the regularization coefficient was fixed to $\alpha = 0.08$ for the ITOP dataset, and $\alpha = 0.01$ for the UBC3V dataset. The number of prototypes was set to $K=70$ and $K=100$ regarding the ITOP and the UBC3V dataset respectively. The weights in the model were initialized using the Xavier normal initializer, that is randomly chosen from the normal distribution with zero mean and a standard deviation proportional to the filter size.
 
 \subsection{Data pre-processing}
+
+
 
 % mention using only SIDE (front) part of ITOP dataset
 
@@ -58,7 +60,11 @@ This section introduces several modifications we made to the proposed model, in 
 
 \noindent
 However, still inspired by the DDP model, we have built a slightly deeper, more complex model, in an attempt to improve the final estimations. We used the ITOP dataset for the evaluation of this model.
-The architecture of the modified DDP network is shown in Fig. \ref{fig:mddp}. As shown in the figure, we significantly increased the amount of drop-out layers, as the model tended to overfit the training data. Aside from the training data, the experiments have shown that even though the test set is sufficiently representative (that is, retains the distribution of the training set), the error on the test data is by far worse than the error on previously unseen data obtained by random sampling of the training set (used as a validation set). This is probably caused by the fact, that the input data is formed by a sequence of video frames, thus many subsequent samples captures almost the same content. As a result, a lot of the validation samples are nearly the same as the ones used for training. The results on the test set of the ITOP dataset are reported and discussed in Chapter 7.
+The architecture of the modified DDP network is shown in Fig. \ref{fig:mddp}. As shown in the figure, we significantly increased the amount of drop-out layers, as the model tended to overfit the training data. Aside from the training data, the experiments have shown that even though the test set is sufficiently representative (that is, retains the distribution of the training set), the error on the test data is by far worse than the error on previously unseen data obtained by random sampling of the training set (used as a validation set). This is probably caused by the fact, that the input data is formed by a sequence of video frames, thus many subsequent samples captures almost the same content. As a result, a lot of the validation samples are nearly the same as the ones used for training.\par
+\vspace{5mm}
+\noindent Besides the model architecture, some of the hyperparameters were slightly modified, mainly due to switching to another deep learning framework, where the back-end procedures differ, which is resulting in a convergence to more or less different output. The regularization parameter $\alpha$ was set to ... . 
+%TODO dopisat zmenu hyperparametrov (+ modifikacia loss funkcie)
+The results on the test set of the ITOP dataset are reported and discussed in Chapter 7.
 
 
 

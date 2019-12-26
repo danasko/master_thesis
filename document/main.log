@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.14159265-2.6-1.40.20 (MiKTeX 2.9.7000 64-bit) (preloaded format=pdflatex 2019.5.3)  26 DEC 2019 13:53
+This is pdfTeX, Version 3.14159265-2.6-1.40.20 (MiKTeX 2.9.7000 64-bit) (preloaded format=pdflatex 2019.5.3)  26 DEC 2019 16:59
 entering extended mode
 **./main.tex
 (main.tex
@@ -606,8 +606,7 @@ Package: natbib 2010/09/13 8.31b (PWD, AO)
 \bibsep=\skip54
 LaTeX Info: Redefining \cite on input line 694.
 \c@NAT@ctr=\count132
-)
-No file main.aux.
+) (main.aux)
 \openout1 = `main.aux'.
 
 LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 40.
@@ -626,6 +625,7 @@ LaTeX Font Info:    Checking defaults for PD1/pdf/m/n on input line 40.
 LaTeX Font Info:    ... okay on input line 40.
 LaTeX Font Info:    Checking defaults for TS1/cmr/m/n on input line 40.
 LaTeX Font Info:    Try loading font information for TS1+cmr on input line 40.
+
 ("C:\Users\Danka\AppData\Local\Programs\MiKTeX 2.9\tex/latex/base\ts1cmr.fd"
 File: ts1cmr.fd 2014/09/29 v2.5h Standard LaTeX font definitions
 )
@@ -646,6 +646,7 @@ Package: gettitlestring 2016/05/16 v1.5 Cleanup title references (HO)
 LaTeX Info: Redefining \ref on input line 40.
 LaTeX Info: Redefining \pageref on input line 40.
 LaTeX Info: Redefining \nameref on input line 40.
+ (main.out) (main.out)
 \@outlinefile=\write3
 \openout3 = `main.out'.
 
@@ -676,7 +677,7 @@ LaTeX Font Info:    Try loading font information for U+msb on input line 52.
  ("C:\Users\Danka\AppData\Local\Programs\MiKTeX 2.9\tex/latex/amsfonts\umsb.fd"
 File: umsb.fd 2013/01/14 v3.01 AMS symbols B
 )
-<images/logo_fmph.png, id=3, 106.59825pt x 113.58435pt>
+<images/logo_fmph.png, id=135, 106.59825pt x 113.58435pt>
 File: images/logo_fmph.png Graphic file (type png)
 <use images/logo_fmph.png>
 Package pdftex.def Info: images/logo_fmph.png  used on input line 57.
@@ -686,13 +687,13 @@ Package pdftex.def Info: images/logo_fmph.png  used on input line 57.
 
 {C:/Users/Danka/AppData/Local/MiKTeX/2.9/pdftex/config/pdftex.map} <./images/lo
 go_fmph.png>]
-<images/logo_fmph_dark.png, id=15, 106.59825pt x 113.58435pt>
+<images/logo_fmph_dark.png, id=147, 106.59825pt x 113.58435pt>
 File: images/logo_fmph_dark.png Graphic file (type png)
 <use images/logo_fmph_dark.png>
 Package pdftex.def Info: images/logo_fmph_dark.png  used on input line 87.
 (pdftex.def)             Requested size: 106.59798pt x 113.58406pt.
  [2 <./images/logo_fmph_dark.png>]
-<images/master_thesis_assignment.jpg, id=22, 597.432pt x 845.0772pt>
+<images/master_thesis_assignment.jpg, id=154, 597.432pt x 845.0772pt>
 File: images/master_thesis_assignment.jpg Graphic file (type jpg)
 <use images/master_thesis_assignment.jpg>
 Package pdftex.def Info: images/master_thesis_assignment.jpg  used on input lin
@@ -723,23 +724,23 @@ $[]$ $[]$
 
 ] [7
 
-]
+] (main.toc [8
+
+])
 \tf@toc=\write4
 \openout4 = `main.toc'.
 
- [8
-
-]
+ [9] (main.lot)
 \tf@lot=\write5
 \openout5 = `main.lot'.
 
- [9
+ [10
 
-]
+] (main.lof)
 \tf@lof=\write6
 \openout6 = `main.lof'.
 
- [10
+ [11
 
 ] (01intro.tex
 Chapter 1.
@@ -759,194 +760,52 @@ Chapter 4.
 [11
 
 ]
-
-Package natbib Warning: Citation `VNect_SIGGRAPH2017' on page 12 undefined on i
-nput line 10.
-
-
-LaTeX Warning: Reference `fig:Vnect' on page 12 undefined on input line 10.
-
-<images/related_work/VNect.PNG, id=119, 800.9925pt x 181.42781pt>
+<images/related_work/VNect.PNG, id=322, 800.9925pt x 181.42781pt>
 File: images/related_work/VNect.PNG Graphic file (type png)
 <use images/related_work/VNect.PNG>
 Package pdftex.def Info: images/related_work/VNect.PNG  used on input line 15.
 (pdftex.def)             Requested size: 390.0pt x 88.33842pt.
-
-Package natbib Warning: Citation `VNect_SIGGRAPH2017' on page 12 undefined on i
-nput line 16.
-
-
-Package natbib Warning: Citation `VNect_SIGGRAPH2017' on page 12 undefined on i
-nput line 16.
-
-
-Package natbib Warning: Citation `DBLP:journals/corr/abs-1907-00837' on page 12
- undefined on input line 21.
-
-[12 <./images/related_work/VNect.PNG>]
-
-Package natbib Warning: Citation `mono-3dhp2017' on page 13 undefined on input 
-line 24.
-
-
-Package natbib Warning: Citation `DBLP:journals/corr/NewellYD16' on page 13 und
-efined on input line 24.
-
-
-Package natbib Warning: Citation `DBLP:journals/corr/ChouCC17' on page 13 undef
-ined on input line 24.
-
-
-Package natbib Warning: Citation `lcrnet' on page 13 undefined on input line 27
-.
-
-
-Package natbib Warning: Citation `NIPS2015_5638' on page 13 undefined on input 
-line 27.
-
-[13]
-
-Package natbib Warning: Citation `Marin18jvcir' on page 14 undefined on input l
-ine 30.
-
-
-Package natbib Warning: Citation `haque2016viewpoint' on page 14 undefined on i
-nput line 30.
-
-
-Package natbib Warning: Citation `Shafaei16' on page 14 undefined on input line
- 32.
-
-[14]
-
-Package natbib Warning: Citation `DBLP:journals/corr/abs-1711-07399' on page 15
- undefined on input line 34.
-
-
-LaTeX Warning: Reference `fig:v2vposenet' on page 15 undefined on input line 34
-.
-
-<images/related_work/v2vposenet.PNG, id=137, 718.18312pt x 211.54031pt>
+ [12 <./images/related_work/VNect.PNG>] [13] [14]
+<images/related_work/v2vposenet.PNG, id=357, 718.18312pt x 211.54031pt>
 File: images/related_work/v2vposenet.PNG Graphic file (type png)
 <use images/related_work/v2vposenet.PNG>
 Package pdftex.def Info: images/related_work/v2vposenet.PNG  used on input line
  39.
 (pdftex.def)             Requested size: 390.0pt x 114.87563pt.
-
-Package natbib Warning: Citation `DBLP:journals/corr/abs-1711-07399' on page 15
- undefined on input line 40.
-
-
-Package natbib Warning: Citation `DBLP:journals/corr/abs-1711-07399' on page 15
- undefined on input line 40.
-
-[15 <./images/related_work/v2vposenet.PNG>]
-
-Package natbib Warning: Citation `DBLP:journals/corr/QiSMG16' on page 16 undefi
-ned on input line 51.
-
-
-Package natbib Warning: Citation `DBLP:journals/corr/QiYSG17' on page 16 undefi
-ned on input line 51.
-
-
-LaTeX Warning: Reference `fig:Pointnet2' on page 16 undefined on input line 51.
-
-
-
-Package natbib Warning: Citation `DBLP:journals/corr/abs-1811-07246' on page 16
- undefined on input line 55.
-
-<images/related_work/pointnet2.jpg, id=145, 2820.5375pt x 1170.3725pt>
+ [15 <./images/related_work/v2vposenet.PNG>]
+<images/related_work/pointnet2.jpg, id=369, 2820.5375pt x 1170.3725pt>
 File: images/related_work/pointnet2.jpg Graphic file (type jpg)
 <use images/related_work/pointnet2.jpg>
 Package pdftex.def Info: images/related_work/pointnet2.jpg  used on input line 
 59.
 (pdftex.def)             Requested size: 390.0pt x 161.81517pt.
-
-Package natbib Warning: Citation `DBLP:journals/corr/QiYSG17' on page 16 undefi
-ned on input line 60.
-
-
-Package natbib Warning: Citation `DBLP:journals/corr/QiYSG17' on page 16 undefi
-ned on input line 60.
-
-[16]
-
-Package natbib Warning: Citation `Ali19' on page 17 undefined on input line 65.
-
-
-[17 <./images/related_work/pointnet2.jpg>]) (05proposal.tex [18]
+ [16] [17 <./images/related_work/pointnet2.jpg>])
+(05proposal.tex [18]
 Chapter 5.
-
-Package natbib Warning: Citation `haque2016viewpoint' on page 19 undefined on i
-nput line 14.
-
-
-LaTeX Warning: Reference `fig:itop' on page 19 undefined on input line 14.
-
 [19
 
 ]
-<images/implementation/itop.png, id=166, 497.60907pt x 180.675pt>
+<images/implementation/itop.png, id=393, 497.60907pt x 180.675pt>
 File: images/implementation/itop.png Graphic file (type png)
 <use images/implementation/itop.png>
 Package pdftex.def Info: images/implementation/itop.png  used on input line 19.
 
 (pdftex.def)             Requested size: 359.38681pt x 130.48798pt.
-
-
-Package natbib Warning: Citation `haque2016viewpoint' on page 20 undefined on i
-nput line 20.
-
-
-Package natbib Warning: Citation `haque2016viewpoint' on page 20 undefined on i
-nput line 20.
-
-
-Package natbib Warning: Citation `Marin18jvcir' on page 20 undefined on input l
-ine 26.
-
-[20 <./images/implementation/itop.png>]
-
-Package natbib Warning: Citation `Shafaei16' on page 21 undefined on input line
- 30.
-
-<images/implementation/ubc3v.png, id=173, 429.10312pt x 200.24812pt>
+ [20 <./images/implementation/itop.png>]
+<images/implementation/ubc3v.png, id=403, 429.10312pt x 200.24812pt>
 File: images/implementation/ubc3v.png Graphic file (type png)
 <use images/implementation/ubc3v.png>
 Package pdftex.def Info: images/implementation/ubc3v.png  used on input line 35
 .
 (pdftex.def)             Requested size: 279.63396pt x 130.48798pt.
-
-Package natbib Warning: Citation `Shafaei16' on page 21 undefined on input line
- 36.
-
-
-Package natbib Warning: Citation `Shafaei16' on page 21 undefined on input line
- 36.
-
-
-LaTeX Warning: Reference `fig:ubc3v' on page 21 undefined on input line 42.
-
-[21 <./images/implementation/ubc3v.png>]
-
-Package natbib Warning: Citation `Vidal:2013:BMC:2478277.2478412' on page 22 un
-defined on input line 46.
-
-
-Package natbib Warning: Citation `Joo_2017_TPAMI' on page 22 undefined on input
- line 49.
-
-
-Package natbib Warning: Citation `Marin18jvcir' on page 22 undefined on input l
-ine 59.
+ [21 <./images/implementation/ubc3v.png>]
+Overfull \hbox (3.79007pt too wide) in paragraph at lines 46--46
+\T1/cmr/m/n/12 The Berke-ley Mul-ti-modal Hu-man Ac-tion Database (MHAD) [[]] w
+as recorded
+ []
 
 [22]
-
-LaTeX Warning: Reference `fig:PBPE' on page 23 undefined on input line 68.
-
-<images/related_work/pbpe2.PNG, id=189, 859.71187pt x 435.12563pt>
+<images/related_work/pbpe2.PNG, id=421, 859.71187pt x 435.12563pt>
 File: images/related_work/pbpe2.PNG Graphic file (type png)
 <use images/related_work/pbpe2.PNG>
 Package pdftex.def Info: images/related_work/pbpe2.PNG  used on input line 72.
@@ -956,98 +815,46 @@ Overfull \hbox (6.63977pt too wide) in paragraph at lines 72--73
  [] 
  []
 
-
-Package natbib Warning: Citation `Ali19' on page 23 undefined on input line 73.
-
-
-
-Package natbib Warning: Citation `Ali19' on page 23 undefined on input line 73.
-
-
 [23]) (06implementation.tex [24 <./images/related_work/pbpe2.PNG>]
 Chapter 6.
-
-Package natbib Warning: Citation `Marin18jvcir' on page 25 undefined on input l
-ine 5.
-
-
-LaTeX Warning: Reference `fig:ddp' on page 25 undefined on input line 13.
-
 [25
 
 ]
-<images/implementation/ddp.PNG, id=209, 608.77437pt x 92.84688pt>
+<images/implementation/ddp.PNG, id=439, 608.77437pt x 92.84688pt>
 File: images/implementation/ddp.PNG Graphic file (type png)
 <use images/implementation/ddp.PNG>
 Package pdftex.def Info: images/implementation/ddp.PNG  used on input line 18.
 (pdftex.def)             Requested size: 390.0pt x 59.4827pt.
-
-
-Package natbib Warning: Citation `Marin18jvcir' on page 26 undefined on input l
-ine 19.
-
-
-Package natbib Warning: Citation `Marin18jvcir' on page 26 undefined on input l
-ine 19.
-
-
-LaTeX Warning: Reference `eq:huberloss' on page 26 undefined on input line 27.
-
-[26 <./images/implementation/ddp.PNG>]
-<images/implementation/mddp.png, id=224, 686.565pt x 275.52937pt>
+ [26 <./images/implementation/ddp.PNG>]
+<images/implementation/mddp.png, id=456, 686.565pt x 275.52937pt>
 File: images/implementation/mddp.png Graphic file (type png)
 <use images/implementation/mddp.png>
 Package pdftex.def Info: images/implementation/mddp.png  used on input line 53.
 
 (pdftex.def)             Requested size: 390.0pt x 156.51102pt.
-
-
-LaTeX Warning: Reference `fig:mddp' on page 27 undefined on input line 61.
-
-[27 <./images/implementation/mddp.png>]
-<images/implementation/itop_seg.png, id=237, 618.81187pt x 318.43968pt>
+ [27] [28 <./images/implementation/mddp.png>]
+<images/implementation/itop_seg.png, id=468, 618.81187pt x 318.43968pt>
 File: images/implementation/itop_seg.png Graphic file (type png)
 <use images/implementation/itop_seg.png>
 Package pdftex.def Info: images/implementation/itop_seg.png  used on input line
- 81.
+ 85.
 (pdftex.def)             Requested size: 273.07121pt x 140.52551pt.
-
-
-Package natbib Warning: Citation `haque2016viewpoint' on page 28 undefined on i
-nput line 82.
-
-
-Package natbib Warning: Citation `haque2016viewpoint' on page 28 undefined on i
-nput line 82.
-
-[28] [29 <./images/implementation/itop_seg.png>]
-<images/implementation/mhad.png, id=253, 742.27313pt x 284.56313pt>
+ [29 <./images/implementation/itop_seg.png>]
+<images/implementation/mhad.png, id=478, 742.27313pt x 284.56313pt>
 File: images/implementation/mhad.png Graphic file (type png)
 <use images/implementation/mhad.png>
-Package pdftex.def Info: images/implementation/mhad.png  used on input line 106
+Package pdftex.def Info: images/implementation/mhad.png  used on input line 110
 .
 (pdftex.def)             Requested size: 366.57121pt x 140.52551pt.
-
-
-Package natbib Warning: Citation `Vidal:2013:BMC:2478277.2478412' on page 30 un
-defined on input line 107.
-
-
-Package natbib Warning: Citation `Vidal:2013:BMC:2478277.2478412' on page 30 un
-defined on input line 107.
-
-[30]
-
-LaTeX Warning: Reference `fig:mhad' on page 31 undefined on input line 113.
-
-<images/implementation/4chan_pipeline.png, id=259, 659.46375pt x 322.20375pt>
+ [30]
+<images/implementation/4chan_pipeline.png, id=487, 659.46375pt x 322.20375pt>
 File: images/implementation/4chan_pipeline.png Graphic file (type png)
 <use images/implementation/4chan_pipeline.png>
 Package pdftex.def Info: images/implementation/4chan_pipeline.png  used on inpu
-t line 125.
+t line 129.
 (pdftex.def)             Requested size: 390.0pt x 190.55087pt.
-[31 <./images/implementation/mhad.png>]) (07results.tex [32 <./images/implement
-ation/4chan_pipeline.png>]
+ [31 <./images/implementation/mhad.png>]) (07results.tex [32 <./images/implemen
+tation/4chan_pipeline.png>]
 Chapter 7.
 ) (08conclusion.tex [33
 
@@ -1059,51 +866,30 @@ Chapter 8.
 
 
 ]
-Underfull \hbox (badness 1371) in paragraph at lines 54--58
+Underfull \hbox (badness 1371) in paragraph at lines 68--72
 \T1/cmr/m/n/12 and Hu-man Pose Es-ti-ma-tion from a Sin-gle Depth Map.  \T1/cmr
 /m/it/12 CoRR\T1/cmr/m/n/12 ,
  []
 
 [36])
-
-Package natbib Warning: There were undefined citations.
-
 Package atveryend Info: Empty hook `BeforeClearDocument' on input line 187.
-[37]
+ [37]
 Package atveryend Info: Empty hook `AfterLastShipout' on input line 187.
- (main.aux
-
-Package natbib Warning: Citation(s) may have changed.
-(natbib)                Rerun to get citations correct.
-
-)
+ (main.aux)
 Package atveryend Info: Executing hook `AtVeryEndDocument' on input line 187.
 Package atveryend Info: Executing hook `AtEndAfterFileList' on input line 187.
-
-
-Package rerunfilecheck Warning: File `main.out' has changed.
-(rerunfilecheck)                Rerun to get outlines right
-(rerunfilecheck)                or use package `bookmark'.
-
-Package rerunfilecheck Info: Checksums for `main.out':
-(rerunfilecheck)             Before: <no file>
-(rerunfilecheck)             After:  4B7F55C8CF9A1A31A5D788519142F994;2163.
-
-LaTeX Warning: There were undefined references.
-
-
-LaTeX Warning: Label(s) may have changed. Rerun to get cross-references right.
-
+Package rerunfilecheck Info: File `main.out' has not changed.
+(rerunfilecheck)             Checksum: 4B7F55C8CF9A1A31A5D788519142F994;2163.
 Package atveryend Info: Empty hook `AtVeryVeryEnd' on input line 187.
  ) 
 Here is how much of TeX's memory you used:
- 10803 strings out of 492897
- 160439 string characters out of 3123755
- 255466 words of memory out of 3000000
- 14395 multiletter control sequences out of 15000+200000
+ 10864 strings out of 492897
+ 161605 string characters out of 3123755
+ 257829 words of memory out of 3000000
+ 14441 multiletter control sequences out of 15000+200000
  16892 words of font info for 45 fonts, out of 3000000 for 9000
  1141 hyphenation exceptions out of 8191
- 36i,7n,42p,1836b,459s stack positions out of 5000i,500n,10000p,200000b,50000s
+ 36i,7n,46p,1836b,459s stack positions out of 5000i,500n,10000p,200000b,50000s
  <C:\Users\Danka\AppData\Local\MiKTeX\2.9\fonts/pk/ljfour/jknappen/ec/dpi600\
 ecti1200.pk> <C:\Users\Danka\AppData\Local\MiKTeX\2.9\fonts/pk/ljfour/jknappen/
 ec/dpi600\ecbx1440.pk> <C:\Users\Danka\AppData\Local\MiKTeX\2.9\fonts/pk/ljfour
@@ -1119,9 +905,9 @@ onts/cm/cmmi12.pfb><C:/Users/Danka/AppData/Local/Programs/MiKTeX 2.9/fonts/type
 9/fonts/type1/public/amsfonts/cm/cmr12.pfb><C:/Users/Danka/AppData/Local/Progra
 ms/MiKTeX 2.9/fonts/type1/public/amsfonts/cm/cmr8.pfb><C:/Users/Danka/AppData/L
 ocal/Programs/MiKTeX 2.9/fonts/type1/public/amsfonts/cm/cmsy10.pfb>
-Output written on main.pdf (47 pages, 2860444 bytes).
+Output written on main.pdf (48 pages, 2892868 bytes).
 PDF statistics:
- 724 PDF objects out of 1000 (max. 8388607)
- 122 named destinations out of 1000 (max. 500000)
- 71 words of extra memory for PDF output out of 10000 (max. 10000000)
+ 939 PDF objects out of 1000 (max. 8388607)
+ 125 named destinations out of 1000 (max. 500000)
+ 335 words of extra memory for PDF output out of 10000 (max. 10000000)
 
