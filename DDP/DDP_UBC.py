@@ -299,7 +299,7 @@ if __name__ == "__main__":
                                    batch_size=batch_size, shuffle=False, mode='test')
 
     # training on |steps| random batches from the training set in each epoch
-    model.fit_generator(generator=train_generator, epochs=10, validation_data=test_generator,
+    model.fit_generator(generator=train_generator, epochs=10, validation_data=valid_generator, # test_generator,
                         # validation_steps=num_validation_samples // batch_size,
                         use_multiprocessing=False, workers=6, max_queue_size=10, initial_epoch=0,
                         steps_per_epoch=None,  # np.shape(D)[0]//batch_size,
