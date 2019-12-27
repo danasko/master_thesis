@@ -670,17 +670,10 @@ if __name__ == "__main__":
     # lrate = keras.callbacks.LearningRateScheduler(step_decay)
 
     # D, P = shuffle(D, P, random_state=3)
-
-    # training on |steps| random batches from the training set in each epoch
-    # train_history = model.fit_generator(generator=data_generator, epochs=50, validation_data=(test_data_x, test_data_y),
-    #                                     # validation_steps=num_validation_samples // batch_size,
-    #                                     # use_multiprocessing=True,  workers=6,
-    #                                     steps_per_epoch=700, # np.shape(D)[0]//batch_size,
-    #                                     callbacks=[tbCallBack], shuffle=True)  # max: epochs = 1000
     #
     # train_history = model.fit(D, P, epochs=50, batch_size=batch_size,
-    #                           # validation_split=0.2,  # 0.02
-    #                           validation_data=(test_data_x, test_data_y),
+    #                           validation_split=0.2,  # 0.02
+    #                           # validation_data=(test_data_x, test_data_y),
     #                           callbacks=[tbCallBack], initial_epoch=0, shuffle=True)  # , earlyStop
     #
     # # np.save('data/DDP/train_history_cluster_fixednorm.npy', train_history)
