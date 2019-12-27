@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.14159265-2.6-1.40.20 (MiKTeX 2.9.7000 64-bit) (preloaded format=pdflatex 2019.5.3)  26 DEC 2019 16:59
+This is pdfTeX, Version 3.14159265-2.6-1.40.20 (MiKTeX 2.9.7000 64-bit) (preloaded format=pdflatex 2019.5.3)  27 DEC 2019 13:52
 entering extended mode
 **./main.tex
 (main.tex
@@ -788,18 +788,18 @@ Chapter 5.
 <images/implementation/itop.png, id=393, 497.60907pt x 180.675pt>
 File: images/implementation/itop.png Graphic file (type png)
 <use images/implementation/itop.png>
-Package pdftex.def Info: images/implementation/itop.png  used on input line 19.
+Package pdftex.def Info: images/implementation/itop.png  used on input line 18.
 
 (pdftex.def)             Requested size: 359.38681pt x 130.48798pt.
  [20 <./images/implementation/itop.png>]
 <images/implementation/ubc3v.png, id=403, 429.10312pt x 200.24812pt>
 File: images/implementation/ubc3v.png Graphic file (type png)
 <use images/implementation/ubc3v.png>
-Package pdftex.def Info: images/implementation/ubc3v.png  used on input line 35
+Package pdftex.def Info: images/implementation/ubc3v.png  used on input line 34
 .
 (pdftex.def)             Requested size: 279.63396pt x 130.48798pt.
  [21 <./images/implementation/ubc3v.png>]
-Overfull \hbox (3.79007pt too wide) in paragraph at lines 46--46
+Overfull \hbox (3.79007pt too wide) in paragraph at lines 44--44
 \T1/cmr/m/n/12 The Berke-ley Mul-ti-modal Hu-man Ac-tion Database (MHAD) [[]] w
 as recorded
  []
@@ -808,10 +808,10 @@ as recorded
 <images/related_work/pbpe2.PNG, id=421, 859.71187pt x 435.12563pt>
 File: images/related_work/pbpe2.PNG Graphic file (type png)
 <use images/related_work/pbpe2.PNG>
-Package pdftex.def Info: images/related_work/pbpe2.PNG  used on input line 72.
+Package pdftex.def Info: images/related_work/pbpe2.PNG  used on input line 70.
 (pdftex.def)             Requested size: 396.63977pt x 200.75073pt.
 
-Overfull \hbox (6.63977pt too wide) in paragraph at lines 72--73
+Overfull \hbox (6.63977pt too wide) in paragraph at lines 70--71
  [] 
  []
 
@@ -825,44 +825,43 @@ File: images/implementation/ddp.PNG Graphic file (type png)
 <use images/implementation/ddp.PNG>
 Package pdftex.def Info: images/implementation/ddp.PNG  used on input line 18.
 (pdftex.def)             Requested size: 390.0pt x 59.4827pt.
- [26 <./images/implementation/ddp.PNG>]
-<images/implementation/mddp.png, id=456, 686.565pt x 275.52937pt>
+ [26 <./images/implementation/ddp.PNG>] [27]
+<images/implementation/mddp.png, id=462, 686.565pt x 275.52937pt>
 File: images/implementation/mddp.png Graphic file (type png)
 <use images/implementation/mddp.png>
-Package pdftex.def Info: images/implementation/mddp.png  used on input line 53.
+Package pdftex.def Info: images/implementation/mddp.png  used on input line 59.
 
 (pdftex.def)             Requested size: 390.0pt x 156.51102pt.
- [27] [28 <./images/implementation/mddp.png>]
-<images/implementation/itop_seg.png, id=468, 618.81187pt x 318.43968pt>
+ [28 <./images/implementation/mddp.png>]
+<images/implementation/itop_seg.png, id=469, 618.81187pt x 318.43968pt>
 File: images/implementation/itop_seg.png Graphic file (type png)
 <use images/implementation/itop_seg.png>
 Package pdftex.def Info: images/implementation/itop_seg.png  used on input line
- 85.
+ 93.
 (pdftex.def)             Requested size: 273.07121pt x 140.52551pt.
- [29 <./images/implementation/itop_seg.png>]
-<images/implementation/mhad.png, id=478, 742.27313pt x 284.56313pt>
+ [29] [30 <./images/implementation/itop_seg.png>]
+<images/implementation/mhad.png, id=483, 742.27313pt x 284.56313pt>
 File: images/implementation/mhad.png Graphic file (type png)
 <use images/implementation/mhad.png>
-Package pdftex.def Info: images/implementation/mhad.png  used on input line 110
+Package pdftex.def Info: images/implementation/mhad.png  used on input line 118
 .
 (pdftex.def)             Requested size: 366.57121pt x 140.52551pt.
- [30]
-<images/implementation/4chan_pipeline.png, id=487, 659.46375pt x 322.20375pt>
+ [31 <./images/implementation/mhad.png>]
+<images/implementation/4chan_pipeline.png, id=492, 659.46375pt x 322.20375pt>
 File: images/implementation/4chan_pipeline.png Graphic file (type png)
 <use images/implementation/4chan_pipeline.png>
 Package pdftex.def Info: images/implementation/4chan_pipeline.png  used on inpu
-t line 129.
+t line 141.
 (pdftex.def)             Requested size: 390.0pt x 190.55087pt.
- [31 <./images/implementation/mhad.png>]) (07results.tex [32 <./images/implemen
-tation/4chan_pipeline.png>]
+ [32]) (07results.tex [33 <./images/implementation/4chan_pipeline.png>]
 Chapter 7.
-) (08conclusion.tex [33
+) (08conclusion.tex [34
 
 ]
 Chapter 8.
-) [34
+) [35
 
-] (main.bbl [35
+] (main.bbl [36
 
 
 ]
@@ -871,9 +870,9 @@ Underfull \hbox (badness 1371) in paragraph at lines 68--72
 /m/it/12 CoRR\T1/cmr/m/n/12 ,
  []
 
-[36])
+[37])
 Package atveryend Info: Empty hook `BeforeClearDocument' on input line 187.
- [37]
+ [38]
 Package atveryend Info: Empty hook `AfterLastShipout' on input line 187.
  (main.aux)
 Package atveryend Info: Executing hook `AtVeryEndDocument' on input line 187.
@@ -883,8 +882,8 @@ Package rerunfilecheck Info: File `main.out' has not changed.
 Package atveryend Info: Empty hook `AtVeryVeryEnd' on input line 187.
  ) 
 Here is how much of TeX's memory you used:
- 10864 strings out of 492897
- 161605 string characters out of 3123755
+ 10865 strings out of 492897
+ 161612 string characters out of 3123755
  257829 words of memory out of 3000000
  14441 multiletter control sequences out of 15000+200000
  16892 words of font info for 45 fonts, out of 3000000 for 9000
@@ -904,10 +903,12 @@ onts/cm/cmmi12.pfb><C:/Users/Danka/AppData/Local/Programs/MiKTeX 2.9/fonts/type
 1/public/amsfonts/cm/cmmi8.pfb><C:/Users/Danka/AppData/Local/Programs/MiKTeX 2.
 9/fonts/type1/public/amsfonts/cm/cmr12.pfb><C:/Users/Danka/AppData/Local/Progra
 ms/MiKTeX 2.9/fonts/type1/public/amsfonts/cm/cmr8.pfb><C:/Users/Danka/AppData/L
-ocal/Programs/MiKTeX 2.9/fonts/type1/public/amsfonts/cm/cmsy10.pfb>
-Output written on main.pdf (48 pages, 2892868 bytes).
+ocal/Programs/MiKTeX 2.9/fonts/type1/public/amsfonts/cm/cmsy10.pfb><C:/Users/Da
+nka/AppData/Local/Programs/MiKTeX 2.9/fonts/type1/public/amsfonts/cm/cmsy8.pfb>
+
+Output written on main.pdf (49 pages, 2903892 bytes).
 PDF statistics:
- 939 PDF objects out of 1000 (max. 8388607)
- 125 named destinations out of 1000 (max. 500000)
+ 949 PDF objects out of 1000 (max. 8388607)
+ 126 named destinations out of 1000 (max. 500000)
  335 words of extra memory for PDF output out of 10000 (max. 10000000)
 

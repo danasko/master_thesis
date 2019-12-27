@@ -10,7 +10,7 @@ The DDP model is based on the idea of linearly combining the predefined prototyp
 
 \subsection{Model structure}
 
-The architecure of the DDP model itself is relatively simple. The model is actually not very deep, it consists of five convolutional blocks, each followed by ReLU activation. First three blocks also contain a pooling layer, as indicated in Fig \ref{fig:ddp}. After the convolutional blocks, there are three fully-connected layers. The number of neurons in the output layer is a hyperparameter set to the number of prototype poses clustered from the dataset. \par
+The architecure of the DDP model itself is relatively simple. The model is actually not very deep, it consists of five convolutional blocks, each followed by ReLU activation. First three blocks also contain a pooling layer, as indicated in Fig \ref{fig:ddp}. After the convolutional blocks, there are three fully-connected layers. The number of neurons in the output layer is a hyperparameter set to the number of prototype poses clustered from the dataset. The input to the model is a one-channel depth map of size 100 x 100 pixels.\par
 
 \vspace{5mm}
 \begin{figure}[H]
@@ -24,7 +24,7 @@ The architecure of the DDP model itself is relatively simple. The model is actua
 
 \subsection{Loss function}
 
-The loss function used during training the model is defined as huber loss with a regularization term, as described in Eq. \ref{eq:huberloss}, where $\mathcal{L}_R$ is the huber (regression) loss.\par
+The loss function used during training the model is defined as huber loss with a regularization term, as described in Eq. \ref{eq:huberloss}, where $\mathcal{L}_R$ is the (residual) huber loss.\par
 
 \begin{equation}
 \mathcal{L}_{DDP}(g(\mathbf{D}, \theta), \mathbf{C}, \mathbf{p}, \alpha) = (1 - \alpha) \cdot \mathcal{L}_R(\mathbf{C} \times g(\mathbf{D}, \theta), \mathbf{p}) + \alpha \cdot \|g(\mathbf{D}, \theta)\|_1 \label{eq:huberloss}
@@ -34,22 +34,26 @@ The loss function used during training the model is defined as huber loss with a
 
 \subsection{Initialization}
 
-The values of the model's hyperparameters from the original DDP paper were chosen using the 'Mann-Whitney U-test' \cite{mann1947}, thus determining, whether the median difference between pairs of configurations are statistically significant. The value of the regularization coefficient was fixed to $\alpha = 0.08$ for the ITOP dataset, and $\alpha = 0.01$ for the UBC3V dataset. The number of prototypes was set to $K=70$ and $K=100$ regarding the ITOP and the UBC3V dataset respectively. The weights in the model were initialized using the Xavier normal initializer, that is randomly chosen from the normal distribution with zero mean and a standard deviation proportional to the filter size.
+The values of the model's hyperparameters from the original DDP paper were chosen using the 'Mann-Whitney U-test' \cite{mann1947}, thus determining, whether the median difference between pairs of configurations are statistically significant. The value of the regularization coefficient was fixed to $\alpha = 0.08$ for the ITOP dataset, and $\alpha = 0.01$ for the UBC3V dataset. The number of prototypes was set to $K=70$ and $K=100$ regarding the ITOP and the UBC3V dataset respectively.\par
+\vspace{5mm}
+\noindent
+The model learns using the Adam optimizer with the learning rate set to $10^{-3}$, which is progressively decreasing during the training.  The weights in the model are initialized using the Xavier normal initializer, that is randomly chosen from the normal distribution with zero mean and a standard deviation proportional to the filter size. The biases are initially set to zero.
 
 \subsection{Data pre-processing}
 
-
-
-% mention using only SIDE (front) part of ITOP dataset
+In the pre-processing stage, the depth maps are re-sized to match the model input dimensions. First, the image is cropped along the larger dimension on both sides to fit the square, assuming the subject is located near the center of the image. Then, the image is re-sized to 100 x 100 px. Afterwards, the depth values are normalized to range [0,1]. Also, the input depth images are normalized globally by subtracting the mean image of the training set from each depth sample. The ground-truth poses are being normalized as well – to zero mean and one standard deviation.\par
+\vspace{5mm}
+\noindent 
+Concerning the datasets used for evaluation, UBC3V already comes with the split into the train, validation and test set. The ITOP dataset is originally divided into the train and test set only, thus the validation set was acquired by random sampling of the train data. The ratio was set to 80/20, meaning the data used for validation are representing 20\% of the train set. During the experiments, only the hard-pose part of UBC3V, and the side-view part (for single-view approach) of the ITOP dataset were used.
 
 %\subsection{Train phase}
 %
 %\subsection{Test phase}
 
 \subsection{Modifications}
-This section introduces several modifications we made to the proposed model, in order to decrease the mean error of the predictions. Since the experience of the researchers is that the implementation of the same model in different framework sometimes leads to different results, we diverted from the original architecture of the model, as well as the optimization parameters.\par
+This section introduces several modifications we made to the proposed DDP model, in order to lower the mean error of the predictions. Since the experience of the researchers made us believe that the implementation of the same model in different framework often leads to different results, we diverted from the original architecture of the model, as well as the initial optimization parameters.\par
 \vspace{5mm}
-%\vspace{5mm}
+
 \begin{figure}[H]
 \begin{center}
   \includegraphics[width=\textwidth]{images/implementation/mddp.png}
@@ -59,12 +63,13 @@ This section introduces several modifications we made to the proposed model, in 
 \end{figure}
 
 \noindent
-However, still inspired by the DDP model, we have built a slightly deeper, more complex model, in an attempt to improve the final estimations. We used the ITOP dataset for the evaluation of this model.
-The architecture of the modified DDP network is shown in Fig. \ref{fig:mddp}. As shown in the figure, we significantly increased the amount of drop-out layers, as the model tended to overfit the training data. Aside from the training data, the experiments have shown that even though the test set is sufficiently representative (that is, retains the distribution of the training set), the error on the test data is by far worse than the error on previously unseen data obtained by random sampling of the training set (used as a validation set). This is probably caused by the fact, that the input data is formed by a sequence of video frames, thus many subsequent samples captures almost the same content. As a result, a lot of the validation samples are nearly the same as the ones used for training.\par
+However, still inspired by the DDP model, we have built a slightly deeper, more complex model, in an attempt to improve the final estimations. We used both ITOP and UBC3V datasets again, for the evaluation of this modified model.
+The architecture of the modified DDP network is shown in Fig. \ref{fig:mddp}. As shown in the figure, we significantly increased the amount of drop-out layers, as the model tended to overfit the training data.\par
 \vspace{5mm}
-\noindent Besides the model architecture, some of the hyperparameters were slightly modified, mainly due to switching to another deep learning framework, where the back-end procedures differ, which is resulting in a convergence to more or less different output. The regularization parameter $\alpha$ was set to ... . 
-%TODO dopisat zmenu hyperparametrov (+ modifikacia loss funkcie)
-The results on the test set of the ITOP dataset are reported and discussed in Chapter 7.
+\noindent Aside from the training data, the experiments on the ITOP dataset have shown that even though the test set seems sufficiently representative (that is, retains the approximate distribution of the training set), the error on the test data is by far worse than the error on previously unseen data obtained by random sampling of the training set (used as a validation set). This is probably caused by the fact, that the input data is formed by a sequence of video frames, thus many subsequent samples captures almost the same content, with only a minimal shift between the frames. As a result, a lot of the validation samples are nearly the same as the ones used for training.\par
+\vspace{5mm}
+\noindent Besides the model architecture, some of the hyperparameters were slightly modified as well, mainly due to switching to another deep learning framework, where the back-end procedures differ, which may be resulting in a convergence to different outputs. The regularization parameter was fixed to $\alpha = 0.1$ for both benchmark datasets. The residual huber loss was replaced by an absolute error, and the L2 norm was used in the regularization term instead of the L1 norm. Also, the initial learning rate was reduced to $10^{-4}$.
+The final results of both the original DDP and modified DDP model, evaluated on the test set of ITOP and UBC3V datasets, are reported and discussed in Chapter 7.
 
 
 
@@ -77,6 +82,7 @@ The results on the test set of the ITOP dataset are reported and discussed in Ch
 
 
 \subsection{Data pre-processing}
+% TODO marge datasets into one subsection ? - or at least the shared part of preprocessing (subsampling, segmentation)
 
 \subsubsection{ITOP}
 
@@ -97,9 +103,9 @@ Depending on the single or multi-view approach, the input point clouds are treat
 \vspace{5mm}
 \noindent
 As the next pre-processing step, the point clouds were subsampled to the specified number of points (2048 points in our case) using the farthest point sampling technique. The input point clouds and the corresponding joint locations were normalized to the range [-1, 1] using the minimum and maximum values of the whole training set. Concerning the validation and test data, there were two options, how to normalize them – either using the scaling parameters of the training set, or scale the validation and test set to the specified range (with its own parameters). However, since the model is designed to work in real-time, the test data will most likely be fed into the network one-by-one, in which case, the only possible option is scaling using the parameters of the train set.\par
-\vspace{5mm}
-\noindent
-In order to increase the number of joints in the skeletal model, in some of the experiments, the interpolation of the joint locations was performed as another part of the pre-processing pipeline.  \textcolor{red}{TODO compare 29 vs 35 joints in Table ..} It is interesting to observe how the number of joints in the skeleton (and the complexity of the model) influences the pose estimation results.
+%\vspace{5mm}
+%\noindent
+%In order to increase the number of joints in the skeletal model, in some of the experiments, the interpolation of the joint locations was performed as another part of the pre-processing pipeline.  \textcolor{red}{TODO compare 29 vs 35 joints in Table ..} It is interesting to observe how the number of joints in the skeleton (and the complexity of the model) influences the pose estimation results.
 
 \subsubsection{MHAD}
 % TODO rozpisat podrobnejsie ?
@@ -120,7 +126,11 @@ Since this dataset captures real-world data, the depth data contain a lot of noi
 
 \vspace{5mm}
 \noindent
-The stated dataset does not provide any partition into train and test data. Thus, the test data was selected as randomly sampled 25\% of the whole dataset during the experiments, while the rest was marked as the train set.
+The stated dataset does not provide any partition into train and test data. Thus, the test data was selected as randomly sampled 25\% of the whole dataset during the experiments, while the rest was marked as the train set.\par
+\vspace{5mm}
+\noindent 
+As already pointed out in the original proposal of the PBPE model, the skeleton representation in the MHAD dataset is very detailed, yielding a total of 35 skeletal joints. Though this provides the ability of estimating the pose with higher complexity, some of the joints have the locations in the skeleton representation so close to each other, they may be considered redundant when estimating a full-body pose. Among these joints are two pairs of nodes located at toe tips and one additional pair of nodes representing the fingertips.
+\textcolor{red}{TODO compare 29 vs 35 joints in Table - in Results chapter} As shown in Table ..., it is interesting to observe how the number of joints in the skeleton (and the complexity of the model) influences the pose estimation results.
 
 
  \section{Four-channel Pose Estimation}

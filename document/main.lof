@@ -14,8 +14,8 @@
 \addvspace {10\p@ }
 \contentsline {figure}{\numberline {6.1}{\ignorespaces Deep Depth Pose model architecture \cite {Marin18jvcir}.}}{26}{figure.caption.16}% 
 \contentsline {figure}{\numberline {6.2}{\ignorespaces Our modification of the original DDP model architecture.}}{28}{figure.caption.17}% 
-\contentsline {figure}{\numberline {6.3}{\ignorespaces Sample point cloud from ITOP-front dataset \cite {haque2016viewpoint}.}}{29}{figure.caption.19}% 
+\contentsline {figure}{\numberline {6.3}{\ignorespaces Sample point cloud from ITOP-front dataset \cite {haque2016viewpoint}.}}{30}{figure.caption.19}% 
 \contentsline {figure}{\numberline {6.4}{\ignorespaces Sample point cloud from MHAD dataset \cite {Vidal:2013:BMC:2478277.2478412}.}}{31}{figure.caption.22}% 
-\contentsline {figure}{\numberline {6.5}{\ignorespaces The Four-channel Pose Estimation pipeline.}}{32}{figure.caption.23}% 
+\contentsline {figure}{\numberline {6.5}{\ignorespaces The Four-channel Pose Estimation pipeline.}}{33}{figure.caption.23}% 
 \addvspace {10\p@ }
 \addvspace {10\p@ }
