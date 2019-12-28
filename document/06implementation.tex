@@ -1,8 +1,8 @@
 \chapter{Implementation}\label{chap:implementation}
-
+This chapter is dedicated to the description of the implementation details of the particular methods and neural models. We will introduce the architecture of the models, as well as the data pre-processing, training procedures and optimization parameters used.
 
 \section{Deep Depth Pose model}
-In this section, we are going to describe our implementation of the DDP model (proposed in \cite{Marin18jvcir}) in the Keras framework. The follow-up additional modifications of the model are presented at the end of the section.\par
+In this section, we are going to describe our implementation of the DDP model (proposed in \cite{Marin18jvcir}) in Keras framework. The follow-up additional modifications of the model are presented at the end of the section.\par
 \vspace{5mm}
 \noindent
 The DDP model is based on the idea of linearly combining the predefined prototype poses to obtain the resulting pose estimation. The set of prototype poses is produced by clustering the training dataset into $K$ clusters, $K$ being a hyperparameter of the network. The output of the model represents $K$ weights, each corresponding to one of the prototype poses. The final estimated pose is then obtained as a sum of the weighted prototypes.
@@ -41,7 +41,7 @@ The model learns using the Adam optimizer with the learning rate set to $10^{-3}
 
 \subsection{Data pre-processing}
 
-In the pre-processing stage, the depth maps are re-sized to match the model input dimensions. First, the image is cropped along the larger dimension on both sides to fit the square, assuming the subject is located near the center of the image. Then, the image is re-sized to 100 x 100 px. Afterwards, the depth values are normalized to range [0,1]. Also, the input depth images are normalized globally by subtracting the mean image of the training set from each depth sample. The ground-truth poses are being normalized as well – to zero mean and one standard deviation.\par
+In the pre-processing stage, the depth maps are re-sized to match the model input dimensions. First, the image is cropped along the larger dimension on both sides to fit the square, assuming the subject is located near the center of the image. Then, the image is re-sized to $100\times100$ px. Afterwards, the depth values are normalized to range [0,1]. Also, the input depth images are normalized globally by subtracting the mean image of the training set from each depth sample. The ground-truth poses are being normalized as well – to zero mean and one standard deviation.\par
 \vspace{5mm}
 \noindent 
 Concerning the datasets used for evaluation, UBC3V already comes with the split into the train, validation and test set. The ITOP dataset is originally divided into the train and test set only, thus the validation set was acquired by random sampling of the train data. The ratio was set to 80/20, meaning the data used for validation are representing 20\% of the train set. During the experiments, only the hard-pose part of UBC3V, and the side-view part (for single-view approach) of the ITOP dataset were used.
@@ -54,6 +54,11 @@ Concerning the datasets used for evaluation, UBC3V already comes with the split 
 This section introduces several modifications we made to the proposed DDP model, in order to lower the mean error of the predictions. Since the experience of the researchers made us believe that the implementation of the same model in different framework often leads to different results, we diverted from the original architecture of the model, as well as the initial optimization parameters.\par
 \vspace{5mm}
 
+\noindent
+However, still inspired by the DDP model, we have built a slightly deeper, more complex model, in an attempt to improve the final estimations. We used both ITOP and UBC3V datasets again, for the evaluation of the modified model.
+The architecture of the modified DDP network is shown in Fig. \ref{fig:mddp}. As shown in the figure, we significantly increased the amount of drop-out layers, as the model tended to overfit the training data. Moreover, two additional convolutional layers were stacked in the model architecture.\par
+\vspace{5mm}
+
 \begin{figure}[H]
 \begin{center}
   \includegraphics[width=\textwidth]{images/implementation/mddp.png}
@@ -62,23 +67,42 @@ This section introduces several modifications we made to the proposed DDP model,
 \end{center}
 \end{figure}
 
-\noindent
-However, still inspired by the DDP model, we have built a slightly deeper, more complex model, in an attempt to improve the final estimations. We used both ITOP and UBC3V datasets again, for the evaluation of this modified model.
-The architecture of the modified DDP network is shown in Fig. \ref{fig:mddp}. As shown in the figure, we significantly increased the amount of drop-out layers, as the model tended to overfit the training data.\par
-\vspace{5mm}
-\noindent Aside from the training data, the experiments on the ITOP dataset have shown that even though the test set seems sufficiently representative (that is, retains the approximate distribution of the training set), the error on the test data is by far worse than the error on previously unseen data obtained by random sampling of the training set (used as a validation set). This is probably caused by the fact, that the input data is formed by a sequence of video frames, thus many subsequent samples captures almost the same content, with only a minimal shift between the frames. As a result, a lot of the validation samples are nearly the same as the ones used for training.\par
-\vspace{5mm}
-\noindent Besides the model architecture, some of the hyperparameters were slightly modified as well, mainly due to switching to another deep learning framework, where the back-end procedures differ, which may be resulting in a convergence to different outputs. The regularization parameter was fixed to $\alpha = 0.1$ for both benchmark datasets. The residual huber loss was replaced by an absolute error, and the L2 norm was used in the regularization term instead of the L1 norm. Also, the initial learning rate was reduced to $10^{-4}$.
-The final results of both the original DDP and modified DDP model, evaluated on the test set of ITOP and UBC3V datasets, are reported and discussed in Chapter 7.
 
+\noindent Besides the structure of the model, some of the hyperparameters were slightly modified as well, mainly due to switching to another deep learning framework, where the back-end procedures differ, which may be resulting in a convergence to different outputs. The regularization parameter was fixed to $\alpha = 0.1$ for both benchmark datasets. The residual huber loss was replaced by an absolute error, and the L2 norm was used in the regularization term instead of the L1 norm. Also, the initial learning rate was reduced to $10^{-4}$.\par
+\vspace{5mm}
+\noindent Regarding the test phase, the experiments on the ITOP dataset have shown that even though the test set seems sufficiently representative (that is, retains the approximate distribution of the training set), the error on the test data is by far worse than the error on previously unseen data obtained by random sampling of the training set (used as a validation set). This is probably caused by the fact, that the input data is formed by a sequence of video frames, thus many subsequent samples captures almost the same content, with only a minimal shift between the frames. As a result, a lot of the validation samples are nearly the same as the ones used for training.\par
+\vspace{5mm}
+\noindent
+The final results of both the original DDP and modified DDP model, evaluated on the test set of ITOP and UBC3V datasets, are reported and discussed in Chapter 7.
 
 
 \section{Point-Based Pose Estimation model}
 
+As another part of our study, we chose to examine the Point-Base Pose Estimation (PBPE) model \cite{Ali19}. Again, we re-implement the method in Keras framework, though the original implementation was in pure Tensorflow. However, note that the original code was not published prior to our implementation.\par
+\vspace{5mm}
+\noindent % TODO este popisat zakladnu myslienku modelu
+
+
 
 \subsection{Model structure}
+ % TODO popisat blizsie vrstvy - a hlavne aj shared MLP -jeho funkcia, zmysel, lokalne, glob. priznaky
+The architecture of the proposed model consists of two branches (or sub-networks). The auxiliary sub-network is included to compute the body-part segmentation on the fly, while the main network regresses the joint locations. The basic idea behind the structure of the model is the aggregation of both local and global features of the input point cloud in the auxiliary part-segmentation network. Without the sub-network, almost all of the local context would be lost because of the max-pooling aggregation in the intermediate layers. The incorporation of the local features helps the network understand the relationships among particular local regions of the human body. The whole architecture of the stated model is shown in Fig. \ref{fig:PBPE}.\par
+\vspace{5mm}
 
-% .. without the segmentation sub-network, the model tends to slightly overfit the train data. The loss of the auxiliary segmentation branch is engaged with weight \textit{w=0.01} to help the model generalize better on previously unseen data.
+\begin{figure}[H]
+\begin{center}
+  \includegraphics[height=200px]{images/related_work/pbpe2.PNG}
+  \caption{The Point-Based Pose Estimation model architecture \cite{Ali19}.}
+  \label{fig:PBPE}
+\end{center}
+\end{figure}
+
+\noindent
+As already mentioned, the unorganized and irregular depth input represented by a point cloud is a key factor in this architecture. For this very reason, the engagement of the classic convolution operation would be meaningless, since the point cloud has provides no explicit spatial information about the neighboring points. In this case, pseudo-convolutions with a kernel size of $1\times1$ are employed. The point of such pseudo-convolution layers is a reduction (or expansion) of dimensionality in the filter space. % TODO najst definicie a popis z prezentacie
+
+% According to our experiments, without the segmentation sub-network, the model tends to slightly overfit the train data. The loss of the auxiliary segmentation branch is engaged with weight \textit{w=0.01} to help the model generalize better on previously unseen data.
+
+
 
 
 \subsection{Data pre-processing}

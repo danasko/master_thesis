@@ -50,31 +50,23 @@ The Berkeley Multimodal Human Action Database (MHAD) \cite{Vidal:2013:BMC:247827
 
 %\subsection{Novel dataset} 
 \section{Approaches}
-... different approaches implemented + novel proposed method - two-stage pipeline Four-channel Pose Estimation ...
-
+The goal of our study is to implement several different approaches to the task of human pose estimation using neural networks. Among the methods we implement are both existing state-of-the-art neural models, as well as our novel approach we propose in this thesis – a two-stage pipeline called Four-channel Pose Estimation. We present the existing models we re-implement, and our novel approach in the subsequent sections.
 
 \subsection{Deep Depth Pose model}
-One of the aims of this work, is to implement the Deep Depth Pose model (DDP) \cite{Marin18jvcir} in Keras framework. We consider this an essential step to propose a state-of-the-art pose estimation model performing on depth data, since the DDP model claims to outperform all of the present methods on the examined datasets.\par
+One of the aims of this work, is to implement the Deep Depth Pose model (DDP) \cite{Marin18jvcir} in Keras framework. We consider this an essential step to propose a state-of-the-art pose estimation model performing on depth data, since the DDP model claims to outperform all of the present methods on the examined datasets. Originally, the model is implemented in Matlab and while some parts of the code (mostly testing) are publicly available, the training procedures were not published.\par
 \vspace{5mm}
 \noindent
-Originally, the model is implemented in Matlab and while some parts of the code (mostly testing) are publicly available, the training procedures were not published. 
+The main idea behind the stated method is incorporating a set of predefined prototype human poses. The convolutional neural network outputs a vector containing weights, each corresponding to particular prototype pose. The weighted prototypes are then summed up producing the final estimated pose. The predefined prototype poses should ideally cover the largest possible range of human poses, so that by their linear combination we can obtain any desired pose during the testing. Thus, the set of prototype poses is formed by applying K-means clustering on the training dataset.
 
 \subsection{Point-Based Pose Estimation model}
 
-% TODO toto cele uz do proposed implementation, potom v implementation uz implementacne detaily, preprocessing dat, upravy modelu, ... 
-...\newline
-In the model he proposed, instead of the first (segmentation) stage, he made use of the auxiliary sub-network, which computes the body-part segmentation on the fly, while the main network regresses the joint locations. The whole architecture of the stated model is shown in Fig. \ref{fig:PBPE}. \par
+% TODO toto cele uz do proposed implementation, potom v implementation uz implementacne detaily, preprocessing dat, upravy modelu
+The Point-Based Pose Estimation model (PBPE) \cite{Ali19} is an approach to 3D human pose estimation from depth data, remarkable by several of its attributes. The whole network consists of two branches, the regression branch and the auxiliary segmentation branch. The output of the model is a 3D body pose, given by the coordinates of skeletal joints. One of the benefits of the method is the possibility of omitting the auxiliary branch in the testing phase, where the model is already trained, and by this restriction of the model's depth and complexity, the computational cost and prediction time can be cut down.\par
 \vspace{5mm}
-\begin{figure}[H]
-\begin{center}
-  \includegraphics[height=200px]{images/related_work/pbpe2.PNG}
-  \caption{The Point-Based Pose Estimation model architecture \cite{Ali19}.}
-  \label{fig:PBPE}
-\end{center}
-\end{figure}
+\noindent Of great significance for our thesis is the fact, that the input to the PBPE network is directly in a form of an unstructured point cloud. This may be convenient for a number of reasons, one of them being the acquisition of a sparser representation of the human body pose, in comparison to commonly used depth maps. The more density the input covers, the more computations have to be performed in the network, thus point clouds offer more effective data processing even in complex model architectures.\par
+\vspace{5mm}
 
-\noindent The basic idea behind the structure of the model is the aggregation of both local and global features of the input point cloud in the auxiliary part-segmentation network. Without the sub-network, almost all of the local context would be lost because of the max-pooling aggregation in the intermediate layers. Thanks to the incorporation of the local features, the network can better understand the relationships among particular local regions of the human body.\par
-\vspace{5mm}
+
 
 
 \subsection{Four-channel Pose Estimation}
