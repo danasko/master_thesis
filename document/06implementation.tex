@@ -101,8 +101,9 @@ The architecture of the proposed model consists of two branches (or sub-networks
 As already mentioned, the unorganized and irregular depth input represented by a point cloud is a key factor in this architecture. For this very reason, the engagement of the classic convolution operation would be meaningless, since the point cloud has provides no explicit spatial information about the neighboring points. In this case, pseudo-convolutions with a kernel size of $1\times1$ are employed. The point of such pseudo-convolution layers is a reduction (or expansion) of dimensionality in the filter space. % TODO najst definicie a popis z prezentacie
 
 % According to our experiments, without the segmentation sub-network, the model tends to slightly overfit the train data. The loss of the auxiliary segmentation branch is engaged with weight \textit{w=0.01} to help the model generalize better on previously unseen data.
+\subsection{Loss function}
 
-
+\subsection{Initialization}
 
 
 \subsection{Data pre-processing}
@@ -156,6 +157,7 @@ The stated dataset does not provide any partition into train and test data. Thus
 As already pointed out in the original proposal of the PBPE model, the skeleton representation in the MHAD dataset is very detailed, yielding a total of 35 skeletal joints. Though this provides the ability of estimating the pose with higher complexity, some of the joints have the locations in the skeleton representation so close to each other, they may be considered redundant when estimating a full-body pose. Among these joints are two pairs of nodes located at toe tips and one additional pair of nodes representing the fingertips.
 \textcolor{red}{TODO compare 29 vs 35 joints in Table - in Results chapter} As shown in Table ..., it is interesting to observe how the number of joints in the skeleton (and the complexity of the model) influences the pose estimation results.
 
+%\subsection{Modifications}  % ?? TODO 
 
  \section{Four-channel Pose Estimation}
 

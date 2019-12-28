@@ -63,15 +63,11 @@ The main idea behind the stated method is incorporating a set of predefined prot
 % TODO toto cele uz do proposed implementation, potom v implementation uz implementacne detaily, preprocessing dat, upravy modelu
 The Point-Based Pose Estimation model (PBPE) \cite{Ali19} is an approach to 3D human pose estimation from depth data, remarkable by several of its attributes. The whole network consists of two branches, the regression branch and the auxiliary segmentation branch. The output of the model is a 3D body pose, given by the coordinates of skeletal joints. One of the benefits of the method is the possibility of omitting the auxiliary branch in the testing phase, where the model is already trained, and by this restriction of the model's depth and complexity, the computational cost and prediction time can be cut down.\par
 \vspace{5mm}
-\noindent Of great significance for our thesis is the fact, that the input to the PBPE network is directly in a form of an unstructured point cloud. This may be convenient for a number of reasons, one of them being the acquisition of a sparser representation of the human body pose, in comparison to commonly used depth maps. The more density the input covers, the more computations have to be performed in the network, thus point clouds offer more effective data processing even in complex model architectures.\par
-\vspace{5mm}
-
-
-
+\noindent Of great significance for our thesis is the fact, that the input to the PBPE network is directly in a form of an unstructured point cloud. This may be convenient for a number of reasons, one of them being the acquisition of a sparser representation of the human body pose, in comparison to commonly used depth maps. The more density the input covers, the more computations have to be performed in the network, thus point clouds offer more effective data processing even in complex model architectures.
 
 \subsection{Four-channel Pose Estimation}
 
-
+An important part of our work is to develop a novel method for human pose estimation. We introduce the Four-channel Pose Estimation – a two-stage pipeline, which takes a point cloud as an input, and outputs the 3D coordinates of the estimated skeletal joint positions.
 %\begin{minipage}{\textwidth}
 %	Sily v našom modeli možno rozdeliť do dvoch skupín:
 %	\begin{itemize}
