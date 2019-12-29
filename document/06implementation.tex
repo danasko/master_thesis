@@ -81,7 +81,7 @@ The final results of both the original DDP and modified DDP model, evaluated on 
 As another part of our study, we chose to examine the Point-Base Pose Estimation (PBPE) model \cite{Ali19}. Again, we re-implement the method in Keras framework, though the original implementation was in pure Tensorflow. However, note that the original code was not published prior to our implementation.\par
 \vspace{5mm}
 \noindent % TODO este popisat zakladnu myslienku modelu
-
+The model is heavily inspired by the implementation of the PointNet \cite{DBLP:journals/corr/QiSMG16}, which was built for the task of object classification and semantic segmentation. The architecture has been basically modified to fit the task of human pose estimation, making use of the auxiliary sub-network contributing to the global model loss.
 
 
 \subsection{Model structure}
@@ -100,14 +100,19 @@ The architecture of the proposed model consists of two branches (or sub-networks
 \noindent
 As already mentioned, the unorganized and irregular depth input represented by a point cloud is a key factor in this architecture. For this very reason, the engagement of the classic convolution operation would be meaningless, since the point cloud has provides no explicit spatial information about the neighboring points. In this case, pseudo-convolutions with a kernel size of $1\times1$ are employed. The point of such pseudo-convolution layers is a reduction (or expansion) of dimensionality in the filter space. % TODO najst definicie a popis z prezentacie
 
-% According to our experiments, without the segmentation sub-network, the model tends to slightly overfit the train data. The loss of the auxiliary segmentation branch is engaged with weight \textit{w=0.01} to help the model generalize better on previously unseen data.
-\subsection{Loss function}
 
-\subsection{Initialization}
+\subsection{Loss function}
+As a loss function of the regression branch, the model uses a simple mean squared error, which in our implementation has been replaced by mean absolute error, as it helped the model to converge faster in our case. Regarding the segmentation branch, the categorical cross-entropy is being used, since it is essentially a classfication task.\par
+\vspace{5mm}
+\noindent
+According to our experiments, without the segmentation sub-network, the model tends to slightly overfit the train data. The loss of the auxiliary segmentation branch is contributing to the global loss to help the model generalize better on previously unseen data. Originally, the weight of the contribution was set to $w_a=0.1$. The weight of the global loss was initially set to $w_g = 0.9$, however given by our observations, we fine-tuned the parameter to $w_g=1$, and decreased the weight of the segmentation branch to $w_a = 0.01$. Again, the differences between the performance with the particular hyper-parameter values might be caused by the change of the deep learning framework.
+
+
+\subsection{Initialization} % vahy init, optimizer Adam + lr + step decay, pocet bodov v pcl, rozmer poslednej vrstvy regression branch zavisi od poctu jointov v kostre, rozmer vystupu segmentacnej vetvy od poctu regionov tela, coz je ale v podstate rovnaky ako pocet jointov (viac o automatickej anotacii regionov tela v nasledujucej subsekcii o preprocessingu dat), 
 
 
 \subsection{Data pre-processing}
-% TODO marge datasets into one subsection ? - or at least the shared part of preprocessing (subsampling, segmentation)
+% TODO marge datasets into one subsection ? - or at least the shared part of preprocessing (subsampling, segmentation) + pcl body part automatic annotation + normalizacia dat pri vsetkych datasetoch
 
 \subsubsection{ITOP}
 
