@@ -184,6 +184,13 @@ As the real datasets do not comprise the partition into the particular body regi
 
  \section{Four-channel Pose Estimation} % TODO
 
+This section is dedicated to the implementation of a novel approach we present as a part of the thesis contribution. The core of the proposed method is a two-stage pipeline, consisting of the body segmentation network and the regression network. The two subsequent stages take a point cloud as an input and produce skeletal joint coordinates as a result. 
+
+
+\subsection{Model structure}
+
+% gather both local and global features
+
 \vspace{5mm}
 \begin{figure}[H]
 \begin{center}
@@ -193,4 +200,8 @@ As the real datasets do not comprise the partition into the particular body regi
 \end{center}
 \end{figure}
 
+\subsection{Loss function}
 
+\subsection{Initialization}
+
+ %\subsection{Data Pre-processing} % TODO mention in initialization - the data pre-processing is the same as in the case of PBPE model
