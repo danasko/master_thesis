@@ -184,11 +184,13 @@ As the real datasets do not comprise the partition into the particular body regi
 
  \section{Four-channel Pose Estimation} % TODO
 
-This section is dedicated to the implementation of a novel approach we present as a part of the thesis contribution. The core of the proposed method is a two-stage pipeline, consisting of the body segmentation network and the regression network. The two subsequent stages take a point cloud as an input and produce skeletal joint coordinates as a result. 
+This section is dedicated to the implementation of a novel approach we present as a part of the thesis contribution. The core of the proposed method is a two-stage pipeline, consisting of a body segmentation network and a regression network. The two subsequent stages take a point cloud as an input and produce skeletal joint coordinates as a result.\par
+\vspace{5mm}
+\noindent The aim of the model is to embrace both local and global features of the input point cloud, and thus increase the accuracy of the final estimation of the human pose. Also, the model makes use of residual connections in-between the layers to help the gradient flow and to avoid the degradation problem as the network depth increases.
 
 
 \subsection{Model structure}
-
+ In both networks of the pipeline, the input point clouds are being processed in a similar fashion as in the PBPE model, i.e. by employing the $1 \times 1$ convolutional layers. First, the input point cloud of a human is passed to the body segmentation network, assuming the input is already sub-sampled to a specified number of points. 
 % gather both local and global features
 
 \vspace{5mm}
