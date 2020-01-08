@@ -1,5 +1,4 @@
-
-dataset = 'ITOP'
+dataset = 'CMU'
 batch_size = 32
 k = 50
 centers = None
@@ -10,8 +9,8 @@ singleview = False
 test_method = 'random25'
 
 # do NOT set both to True at once
-segnet = False
-mymodel = True
+segnet = True
+mymodel = False
 
 if dataset == 'MHAD':
     if singleview:
@@ -36,7 +35,7 @@ elif dataset == 'UBC':
     numJoints = 18
     numRegions = 18
     fill = 5
-else:  # ITOP
+elif dataset == 'ITOP':
     numTrainSamples = 17991
     numValSamples = 0
     numTestSamples = 4863
@@ -44,6 +43,15 @@ else:  # ITOP
     numJoints = 15
     numRegions = 15
     fill = 6
+else:  # 'CMU'
+    numTrainSamples = 112596
+    numValSamples = 0
+    numTestSamples = 28148
+
+    numJoints = 15
+    numRegions = 15
+    fill = 6
+
 # scaler_minX, scaler_minY, scaler_minZ = None, None, None
 # scaler_scaleX, scaler_scaleY, scaler_scaleZ = None, None, None
 
@@ -55,12 +63,12 @@ pcls_max = [-1000000, -1000000, -1000000]
 poses_min = [1000000, 1000000, 1000000]
 poses_max = [-1000000, -1000000, -1000000]
 
-# name = 'segnet_lr0.001_4residuals_2.blockconvs512'
-name = 'mymodel_lr0.0005_noproto_convs1x1_poolto1_512_256_1residual_nomaxpool_globalavgpool_4chan_reg_preds'
-
+name = 'segnet_lr0.001_4residuals_2.blockconvs512'
+# name = 'mymodel_lr0.0005_noproto_convs1x1_poolto1_512_256_1residual_nomaxpool_globalavgpool_4chan_reg_preds'
+# name = 'pbpe_new_mae_denserelu_bnsegonly_weights1.01_lrdrop0.8_lr0.0005_3localfeats_woseq6_localzeromean'
 steps = None
 
-# use predicted regions when running 4-chan model
+# use predicted regions when running 4-chan model - only applied when using generator
 predicted_regs = False
 
 workers = 3  # mp.cpu_count()

@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import numpy as np
 import keras.backend as Kb
+import config
 
 UBC_bone_list = [[0, 1], [1, 2], [2, 3], [3, 4], [4, 5], [5, 6], [5, 9], [6, 7], [7, 8], [9, 10], [1, 12], [10, 11],
                  [1, 15], [12, 13], [13, 14], [15, 16], [16, 17]]
@@ -9,7 +10,10 @@ UBC_bone_list = [[0, 1], [1, 2], [2, 3], [3, 4], [4, 5], [5, 6], [5, 9], [6, 7],
 MHAD_bone_list = [[0, 1], [1, 2], [2, 3], [3, 4], [4, 5], [5, 6], [3, 7], [7, 8], [8, 9], [9, 10], [10, 11], [11, 12],
                   [3, 13], [13, 14], [14, 15], [15, 16], [16, 17], [17, 18], [0, 19],
                   [19, 20], [20, 21], [21, 22], [22, 23], [0, 24], [24, 25], [25, 26], [26, 27], [27, 28]]
-numRegions = 45
+
+CMU_bone_list = [[0, 1], [0, 2], [0, 3], [3, 4], [4, 5], [0, 9], [9, 10], [10, 11], [2, 6], [6, 7], [7, 8], [2, 12],
+                 [12, 13], [13, 14]]
+numRegions = 15
 
 
 def save_frames(predictions, data, gt_dir, fill, pcls_min, pcls_max, poses_min, poses_max, numJoints=29, num=None,
@@ -104,7 +108,11 @@ def visualize_3D(coords, pause=True, array=False, regions=None, pose=None, numJo
         for bone in MHAD_bone_list:
             ax.plot([pose[:, 0][bone[0]], pose[:, 0][bone[1]]],
                     [pose[:, 2][bone[0]], pose[:, 2][bone[1]]], [pose[:, 1][bone[0]], pose[:, 1][bone[1]]], color)
-    #
+    # elif config.dataset == 'CMU':
+    #     for bone in CMU_bone_list:
+    #         ax.plot([pose[:, 0][bone[0]], pose[:, 0][bone[1]]],
+    #                 [pose[:, 2][bone[0]], pose[:, 2][bone[1]]], [pose[:, 1][bone[0]], pose[:, 1][bone[1]]], color)
+
     # plt.xlim(-100, 100)
     # ax.set_zlim3d(-100, 100)
     # plt.ylim(-100, 100)
@@ -157,6 +165,10 @@ def visualize_3D_pose(pose, pause=True, numJoints=18,
         for bone in MHAD_bone_list:
             ax.plot([pose[:, 0][bone[0]], pose[:, 0][bone[1]]],
                     [pose[:, 2][bone[0]], pose[:, 2][bone[1]]], [pose[:, 1][bone[0]], pose[:, 1][bone[1]]], color)
+    elif config.dataset == 'CMU':
+        for bone in CMU_bone_list:
+            ax.plot([pose[:, 0][bone[0]], pose[:, 0][bone[1]]],
+                    [pose[:, 2][bone[0]], pose[:, 2][bone[1]]], [pose[:, 1][bone[0]], pose[:, 1][bone[1]]], color)
 
     # for i in range(numJoints):
     #     ax.text(pose[i, 0], pose[i, 2], pose[i, 1], '%s' % (str(i)), size=10, zorder=1,
@@ -166,3 +178,13 @@ def visualize_3D_pose(pose, pause=True, numJoints=18,
     if pause:
         plt.pause(0.001)
         input("Press [enter] to show next pose.")
+
+
+if __name__ == "__main__":
+    idx = 100200
+    # pcl, pose = np.load('data/CMU/train/171204_pose4.npy', allow_pickle=True)[idx]
+    regions = np.load('data/CMU/train/regions.npy')[idx]
+    pcl = np.load('data/CMU/train/scaled_pcls.npy', allow_pickle=True)[idx]  # todo check from 98162 to end (val split)
+    pose = np.load('data/CMU/train/scaled_poses.npy', allow_pickle=True)[idx]
+    # regions = np.load('data/CMU/train/regions/')
+    visualize_3D(pcl, pose=pose, regions=regions, numJoints=15)

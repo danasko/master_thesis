@@ -374,14 +374,15 @@ def real_time_predict(test_x, get_output_func):
     return model_output
 
 
-def run_segnet(generator, mode='test', save=True):
+def run_segnet(generator, x, mode='test', save=True):
     # Predict regions from segnet and save
-    if mode == 'train':
-        get_output = Kb.function([model.layers[0].input, Kb.learning_phase()], [model.layers[-1].output])
+    segnet_model = load_model('data/models/' + dataset + '/10eps_segnet_lr0.001_4residuals_2.blockconvs512.h5')
+    if mode == 'train' and dataset != 'ITOP' and dataset != 'CMU':
+        get_output = Kb.function([segnet_model.layers[0].input, Kb.learning_phase()], [segnet_model.layers[-1].output])
         for b_num in range(numTrainSamples // batch_size):
             pcl_batch = np.load(
                 'data/' + dataset + '/' + mode + '/scaledpclglobalbatches/' + str(b_num + 1).zfill(fill) + '.npy')
-            # pred = model.predict(pcl_batch, batch_size=batch_size, steps=None)
+            # pred = segnet_model.predict(pcl_batch, batch_size=batch_size, steps=None)
             pred = get_output([pcl_batch, 0])[0]
             pred = np.argmax(pred, -1)
             pred = np.expand_dims(pred, -1)
@@ -390,8 +391,11 @@ def run_segnet(generator, mode='test', save=True):
                     'data/' + dataset + '/' + mode + '/regions_predicted_batches/' + str(b_num + 1).zfill(
                         fill) + '.npy', pred)
     else:
-        pred = model.predict_generator(generator, use_multiprocessing=True, steps=None, workers=workers,
-                                       verbose=1)
+        if dataset == 'ITOP' or dataset == 'CMU':
+            pred = segnet_model.predict(x, batch_size=batch_size, verbose=1)
+        else:
+            pred = segnet_model.predict_generator(generator, use_multiprocessing=True, steps=None, workers=workers,
+                                                  verbose=1)
         if save:
             np.save('data/' + dataset + '/' + mode + '/predicted_regs.npy', pred)
         return pred
@@ -402,7 +406,10 @@ def step_decay(epoch):
     # if dataset == 'ITOP':
     #     initial_lrate = 0.0005
     # else:
-    initial_lrate = 0.001  # 0.001 0.0005
+    if mymodel or segnet:
+        initial_lrate = 0.001
+    else:
+        initial_lrate = 0.0005  # 4chan 0.001 PBPE 0.0005
     drop = 0.8  # 0.5 0.8
     epochs_drop = 1.0
     lrate = initial_lrate * pow(drop,
@@ -537,29 +544,29 @@ if __name__ == "__main__":
         metrics = ['accuracy']
         lossf = 'categorical_crossentropy'
         lossw = [1.]
-    else:
-        if mymodel:
-            metrics = [avg_error, mean_avg_precision]
-            lossf = 'mean_absolute_error'
-            lossw = [1.]
-        else:  # PBPE model
-            metrics = {'output1': [avg_error, mean_avg_precision], 'output2': 'accuracy'}
-            lossf = losses
-            lossw = [1.0, 0.01]  # TODO try bigger, original 0.1
+    elif mymodel:
+        metrics = [avg_error, mean_avg_precision]
+        lossf = 'mean_absolute_error'
+        lossw = [1.]
+    else:  # PBPE model
+        metrics = {'output1': [avg_error, mean_avg_precision], 'output2': 'accuracy'}
+        lossf = losses
+        lossw = [1.0, 0.01]  # TODO try bigger, original 0.1
+        test_model.compile(optimizer=Adam,
+                           loss="mean_absolute_error", metrics=metrics)
 
     model.compile(optimizer=Adam,
                   loss=lossf, loss_weights=lossw,
                   metrics=metrics)
     # metrics=[avg_error_proto])
 
-    # test_model.compile(optimizer=Adam,
-    #                    loss="mean_absolute_error", metrics={'output1': [avg_error, mean_avg_precision]})
-
     # model = load_model(
     #     'data/models/'+dataset+'/10eps_mymodel_lr0.001_noproto_convs1x1_poolto1_512_256_1residual_globalavgpool_4chan_reg_preds.h5')
 
     # model = load_model(z
     #     'data/models/' + dataset + '/10eps_segnet_lr0.001_4residuals_2.blockconvs512.h5')
+
+    # model = load_model('data/models/CMU/09eps_'+name+'.h5')
 
     # test_model = load_model(
     #     'data/models/MHAD/test_models/20eps_batches_11subs_fixeddatafull_mae_denserelu_bnsegonly_weights1.01_lrdrop0.8_lr0.0005_3localfeats.h5')
@@ -577,6 +584,51 @@ if __name__ == "__main__":
         # [testloss, testavg_err] = test_model.evaluate(test_x, test_y, batch_size=batch_size)
         # print('test avg error: ', testavg_err)
         # predictions = test_model.predict(test_x, batch_size=batch_size)
+    elif dataset == 'CMU':  #### CMU panoptic demo #### # todo rewrite as generator ?
+        # idx = 0
+        # regs_train = np.empty(shape=(numTrainSamples, numPoints, 1, numRegions))
+        # regs_train = np.load('data/CMU/train/regions.npy', allow_pickle=True)
+        regs_train = np.load('data/CMU/train/regs_onehot.npy', allow_pickle=True)
+        x_train = np.load('data/CMU/train/scaled_pcls_lzeromean.npy', allow_pickle=True)
+        x_train = np.expand_dims(x_train, axis=2)
+        y_train = np.load('data/CMU/train/scaled_poses_lzeromean.npy', allow_pickle=True)
+        y_train = y_train.reshape((y_train.shape[0], numJoints * 3))
+        # one-hot encoding
+        # regs_train = np.eye(numRegions, dtype=np.int)[regs_train]
+        # regs_train = regs_train.reshape((regs_train.shape[0], numPoints, 1, numRegions))
+        # np.save('data/CMU/train/regs_onehot.npy', regs_train)
+        if segnet:
+            model.fit(x_train, regs_train, batch_size=batch_size,
+                      epochs=10,
+                      callbacks=callbacks_list,
+                      validation_split=0.2, shuffle=True, initial_epoch=0)  # 0.2
+        elif mymodel:
+            x_train = np.concatenate([x_train, regs_train], axis=-1)
+            model.fit(x_train, y_train, batch_size=batch_size,
+                      epochs=10,
+                      callbacks=callbacks_list,
+                      validation_split=0.2, shuffle=True, initial_epoch=0)  # 0.2
+        else:  # PBPE
+            model.fit(x_train, {'output1': y_train, 'output2': regs_train}, batch_size=batch_size,
+                      epochs=10,
+                      callbacks=callbacks_list,
+                      validation_split=0.2, shuffle=True, initial_epoch=0)  # 0.2
+
+        x_test = np.load('data/CMU/test/scaled_pcls_lzeromean.npy', allow_pickle=True)
+        x_test = np.expand_dims(x_test, axis=2)
+        y_test = np.load('data/CMU/test/scaled_poses_lzeromean.npy', allow_pickle=True)
+        y_test = y_test.reshape((y_test.shape[0], numJoints * 3))
+        if segnet:
+            regs_test = np.load('data/CMU/test/regions.npy', allow_pickle=True)
+            regs_test = np.eye(numRegions, dtype=np.int)[regs_test]
+            regs_test = regs_test.reshape((regs_test.shape[0], numPoints, 1, numRegions))
+            test_metrics = model.evaluate(x_test, regs_test, batch_size=batch_size)
+        elif mymodel:
+            regs_test_pred = run_segnet(None, x_test, mode='test', save=False)
+            x_test = np.concatenate([x_test, regs_test_pred], axis=-1)
+            test_metrics = model.evaluate(x_test, y_test, batch_size=batch_size)
+        else:  # PBPE
+            test_metrics = test_model.evaluate(x_test, y_test, batch_size=batch_size)
     else:
         train_generator = DataGenerator('data/' + dataset + '/train/', numPoints, numJoints, numRegions, steps=steps,
                                         batch_size=batch_size,
@@ -602,10 +654,11 @@ if __name__ == "__main__":
         #                     # TODO remove test generator from validation
         #                     callbacks=callbacks_list, initial_epoch=0, use_multiprocessing=True,  # False
         #                     workers=workers, shuffle=True, max_queue_size=10)  # 20
-    # # #     # test_model.fit_generator(generator=train_generator, epochs=10,  # validation_data=valid_generator,
-    # # #     #                     callbacks=callbacks_list, initial_epoch=0, use_multiprocessing=False,  # False
-    # # #     #                     workers=workers, shuffle=True, max_queue_size=10)  # 20
-    # # #
+        #     # test_model.fit_generator(generator=train_generator, epochs=10,  # validation_data=valid_generator,
+        #     #                     callbacks=callbacks_list, initial_epoch=0, use_multiprocessing=False,  # False
+        #     #                     workers=workers, shuffle=True, max_queue_size=10)  # 20
+        #
+
     # # # # save the model
     # model.save(
     #     'data/models/' + dataset + '/' + name + '.h5') # is saved during checkpoints

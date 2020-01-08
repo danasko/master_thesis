@@ -56,7 +56,7 @@ This section introduces several modifications we made to the proposed DDP model,
 
 \noindent
 However, still inspired by the DDP model, we have built a slightly deeper, more complex model, in an attempt to improve the final estimations. We used both ITOP and UBC3V datasets again, for the evaluation of the modified model.
-The architecture of the modified DDP network is shown in Fig. \ref{fig:mddp}. As shown in the figure, we significantly increased the amount of drop-out layers, as the model tended to overfit the training data. Moreover, two additional convolutional layers were stacked in the model architecture.\par
+The architecture of the modified DDP network is shown in Fig. \ref{fig:mddp}. As shown in the figure, we significantly increased the amount of dropout layers, as the model tended to overfit the training data. Moreover, two additional convolutional layers were stacked in the model architecture.\par
 \vspace{5mm}
 
 \begin{figure}[H]
@@ -81,7 +81,7 @@ The final results of both the original DDP and modified DDP model, evaluated on 
 As another part of our study, we chose to examine the Point-Base Pose Estimation (PBPE) model \cite{Ali19}. Again, we re-implement the method in Keras framework, though the original implementation was in pure Tensorflow. However, note that the original code was not published prior to our implementation.\par
 \vspace{5mm}
 \noindent % TODO este popisat zakladnu myslienku modelu
-The model is heavily inspired by the implementation of the PointNet \cite{DBLP:journals/corr/QiSMG16}, which was built for the task of object classification and semantic segmentation. Basically, the architecture has been modified to fit the task of human pose estimation, making use of the auxiliary sub-network contributing to the global model loss.
+The model is heavily inspired by the implementation of PointNet \cite{DBLP:journals/corr/QiSMG16}, which was built for the task of object classification and semantic segmentation. Basically, the architecture has been modified to fit the task of human pose estimation, making use of the auxiliary sub-network contributing to the global model loss.
 
 
 \subsection{Model structure}
@@ -97,25 +97,25 @@ The architecture of the proposed model consists of two branches (or sub-networks
 \end{figure}
 
 \noindent
-As already mentioned, the unorganized and irregular depth input represented by a point cloud is a key factor in this architecture. For this very reason, the engagement of the classic convolution operation would be meaningless, since the point cloud has provides no explicit spatial information about the neighboring points. In this case, pseudo-convolutions with a kernel size of $1\times1$ are employed. The function of such pseudo-convolution layers is reducing (or expanding) the dimensionality in the filter space. A stack of the $1 \times 1$ convolution layers, each followed by ReLU activation, is illustrated in Fig. \ref{fig:PBPE} as a shared multilayer perceptron (shared MLP). The numbers in the parentheses indicate the number of filters in particular layers.\par
+As already mentioned, the unorganized and irregular depth input represented by a point cloud is a key factor in this architecture. For this very reason, the engagement of the classic convolution operation would be meaningless, since the point cloud has provides no explicit spatial information about the neighboring points. In this case, pseudo-convolutions with a kernel size of $1\times1$ are employed. The function of such pseudo-convolution layers is reducing (or expanding) the dimensionality in the filter space. A stack of the $1 \times 1$ convolution layers, each followed by batch normalization and ReLU activation, is illustrated in Fig. \ref{fig:PBPE} as a shared multilayer perceptron (shared MLP). The numbers in the parentheses indicate the number of filters in particular layers.\par
 \vspace{5mm}
-\noindent The input of the model is of shape $(b \times p \times 3)$, where $b$ represents the batch size, and $p$ is the number of points in the input point cloud, each located by three coordinates. The output shape of both sub-networks depends on the number of joints in the skeleton structure. The number of joints, as well as the number of points the point clouds are containing, is a hyper-parameter.\par
+\noindent After the shared multilayer perceptron, the regression branch consists of two fully-connected layers and an output layer. Each dense layer is also followed by a batch normalization layer and ReLU activation. The input of the model is of shape $(b \times p \times 3)$, where $b$ represents the batch size, and $p$ is the number of points in the input point cloud, each located by three coordinates. The output shape of both sub-networks depends on the number of joints in the skeleton structure. The number of joints, as well as the number of points the point clouds are containing, is a hyper-parameter.\par
 \vspace{5mm}
 \noindent The input passed to the auxiliary segmentation sub-network is formed by concatenating the local and the global features obtained in the regression branch. The local features contains the outputs of pseudo-convolutions before the max-pooling is applied. The global features are acquired as the result of max-pooling across all points in the point cloud. The auxiliary sub-network outputs per-point labels segmenting the input point cloud into particular body parts.\par
 \vspace{5mm}
 \noindent One of the conveniences of the PBPE model is the optional omission of the auxiliary branch at test time. Since we are focusing strictly on the task of pose estimation, the body part segmentation is only relevant for us in a context of training (and contributing to the model loss). Hence, we can prevent the data from being passed through the segmentation branch at the inference time, saving computational cost and time.
 
 \subsection{Loss function}
-As a loss function of the regression branch, the model uses a simple mean squared error, which in our implementation has been replaced by mean absolute error, as it helped the model to converge faster in our case. Regarding the segmentation branch, the categorical cross-entropy is being used, since it is essentially a classfication task.\par
+As a loss function of the regression branch, the model uses a simple mean squared error. Regarding the segmentation branch, the categorical cross-entropy is being used, since it is essentially a classfication task.\par
 \vspace{5mm}
 \noindent
-According to our experiments, without the segmentation sub-network, the model tends to slightly overfit the train data. The loss of the auxiliary segmentation branch is contributing to the global loss to help the model generalize better on previously unseen data. Originally, the weight of the contribution was set to $w_a=0.1$. The weight of the global loss was initially set to $w_g = 0.9$, however given by our observations, we fine-tuned the parameter to $w_g=1$, and decreased the weight of the segmentation branch to $w_a = 0.01$. Again, the differences between the performance with the particular hyper-parameter values might be caused by the change of the deep learning framework.
+According to our experiments, without the segmentation sub-network, the model tends to slightly overfit the train data. The loss of the auxiliary segmentation branch is contributing to the global loss to help the model generalize better on previously unseen data. Originally, the weight of the contribution was set to $w_a=0.1$. The default weight of the global loss is $w_g = 0.9$. 
 
 
 \subsection{Initialization} 
-The hyper-parameters of the model mostly preserve the same values as in the original paper, except for the weight initialization, the initial learning rate and loss weights mentioned in the previous section. The weights inside the model are sampled from the normal distribution with zero mean and standard deviation relative to filter size, using the Xavier initializer. The initial learning rate is set to $10^{-3}$, and is reduced exponentially with a decay rate $d = 0.2$ in each epoch. The model is trained using the Adam optimizer. In each step, the model processes a batch of size $b=32$.\par
+The weights inside the model are sampled from the normal distribution with zero mean and standard deviation relative to filter size, using the Xavier initializer. Following the PBPE proposal, the initial learning rate is set to $10^{-3}$, and is reduced exponentially with a decay rate $d = 0.5$ in each epoch. Also, the learning rate is clipped at the value of $10^-5$, in order to prevent the model training from getting stuck in local minima. The model is trained using the Adam optimizer. In each step, the model processes a batch of size $b=32$.\par
 \vspace{5mm}
-\noindent Another essential hyper-parameter is the predefined number of points in the input point clouds. The value is set to $p=2048$, therefore every point cloud needs to be sub-sampled to this number of points, prior to feeding it to the network. The number of joints in the skeleton representation, defining the output shape of the both model branches, should be adjusted according to the dataset the network is processing at the moment.
+\noindent Another essential hyper-parameter is the predefined number of points in the input point clouds. The value is set to $p=2048$, which seems to be an adequate amount of points to cover the whole human pose with enough complexity. Therefore, every point cloud needs to be sub-sampled to this number of points, prior to feeding it to the network. The number of joints in the skeleton representation, defining the output shape of the both model branches, should be adjusted according to the dataset the network is processing at the moment.
 
 \subsection{Data pre-processing}
 % TODO marge datasets into one subsection ? - or at least the shared part of preprocessing (subsampling, segmentation) + pcl body part automatic annotation + normalizacia dat pri vsetkych datasetoch
@@ -180,27 +180,39 @@ As the real datasets do not comprise the partition into the particular body regi
 \end{center}
 \end{figure}
 
-%\subsection{Modifications}  % ?? TODO 
+\subsection{Modifications}
+For the sake of achieving as accurate pose estimation as possible, we made a number of modifications to the model implementation, to use the full potential of the selected framework. In the architecture of our modified PBPE model, we put even greater emphasis on the local feature extraction, chaining additional pseudo-convolutional layers into the shared multilayer perceptron before max-pooling. Aside from that, we also left out the dropout in the regression branch, since with a help from the auxiliary branch, the model had not suffer from overfitting. Moreover, we skipped all the batch normalization layers in the main branch, since the performance improved when excluding them.\par
+\vspace{5mm}
+\noindent
+The loss function has been replaced by mean absolute error, as it helped the model to converge faster in our case. The hyper-parameters of the model mostly preserve the same values as in the original paper, except for the learning rate and loss weights. Given by our observations, we fine-tuned the weight parameter of the global loss to $w_g=1$, and decreased the weight of the segmentation branch to $w_a = 0.01$. We set the initial learning rate to $5^{-4}$, while reducing it with an exponential decay rate of $d = 0.2$ in each epoch. Again, the differences between the performance with the particular hyper-parameter values might be caused by switching to another deep learning framework. 
 
- \section{Four-channel Pose Estimation} % TODO
+
+\section{Four-channel Pose Estimation} % TODO
 
 This section is dedicated to the implementation of a novel approach we present as a part of the thesis contribution. The core of the proposed method is a two-stage pipeline, consisting of a body segmentation network and a regression network. The two subsequent stages take a point cloud as an input and produce skeletal joint coordinates as a result.\par
 \vspace{5mm}
-\noindent The aim of the model is to embrace both local and global features of the input point cloud, and thus increase the accuracy of the final estimation of the human pose. Also, the model makes use of residual connections in-between the layers to help the gradient flow and to avoid the degradation problem as the network depth increases.
+\noindent The aim of the model is to embrace both local and global features of the input point cloud, and thus increase the accuracy of the final estimation of the human pose. Also, the model makes use of the residual connections in-between the layers to help the gradient flow, and to avoid the degradation problem as the network depth increases.
 
 
 \subsection{Model structure}
- In both networks of the pipeline, the input point clouds are being processed in a similar fashion as in the PBPE model, i.e. by employing the $1 \times 1$ convolutional layers. First, the input point cloud of a human is passed to the body segmentation network, assuming the input is already sub-sampled to a specified number of points. 
-% gather both local and global features
-
+In both networks of the pipeline, the input point clouds are being processed in a similar fashion as in the PBPE model, i.e. by employing the $1 \times 1$ convolutional layers. The architecture of the whole pipeline is described in Fig. \ref{fig:4chan_pipeline}.\par
+\vspace{5mm}
+\noindent First, an input point cloud of the captured subject is passed to the body segmentation network, assuming the input is already sub-sampled to the specified number of points. The segmentation model contains two shared multilayer perceptron blocks, which are – compared to those used in the PBPE model – upgraded by residual skip connections added between the convolution operations. The outcome of the first block represents the local features extracted from the input. Next, a max-pooling across all points is applied and the obtained global features are concatenated with the local features, in a similar way as in the PBPE model. Subsequently, the gathered features are fed into the second block of pseudo-convolutions. Here, aside from the shortcut connections, a dropout layer is included between each convolution. The segmentation network outputs a point-wise classification of the point cloud into the body regions.\par
+\vspace{5mm}
 \vspace{5mm}
 \begin{figure}[H]
 \begin{center}
-  \includegraphics[width=\textwidth]{images/implementation/4chan_pipeline.png}
+  \includegraphics[width=\textwidth]{images/implementation/4chan_pipeline_fixed.png}
   \caption[The Four-channel Pose Estimation pipeline.]{ The Four-channel Pose Estimation pipeline: First, point clouds are segmented into body regions in the segmentation network (up), then the input point clouds are concatenated with the predicted body regions as a fourth channel, and are fed into the regression network (down).}
   \label{fig:4chan_pipeline}
 \end{center}
 \end{figure}
+
+\noindent The produced partition into the body regions is concatenated with the original point cloud, hence forming a four-channel input. 
+
+
+% TODO in results ? - the 4chan model proved to benefit from the redundancy in the network inputs, being able to absorb the local and global context at once.
+
 
 \subsection{Loss function}
 
