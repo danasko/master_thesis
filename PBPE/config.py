@@ -9,8 +9,10 @@ singleview = False
 test_method = 'random25'
 
 # do NOT set both to True at once
-segnet = True
-mymodel = False
+segnet = False
+mymodel = True
+
+assert not segnet or not mymodel
 
 if dataset == 'MHAD':
     if singleview:
@@ -63,9 +65,15 @@ pcls_max = [-1000000, -1000000, -1000000]
 poses_min = [1000000, 1000000, 1000000]
 poses_max = [-1000000, -1000000, -1000000]
 
-name = 'segnet_lr0.001_4residuals_2.blockconvs512'
-# name = 'mymodel_lr0.0005_noproto_convs1x1_poolto1_512_256_1residual_nomaxpool_globalavgpool_4chan_reg_preds'
-# name = 'pbpe_new_mae_denserelu_bnsegonly_weights1.01_lrdrop0.8_lr0.0005_3localfeats_woseq6_localzeromean'
+if segnet:
+    name = 'segnet_lr0.001_4residuals_2.blockconvs512'
+elif mymodel:
+    name = 'mymodel_lr0.0005_noproto_convs1x1_poolto1_512_256_1residual_nomaxpool_globalavgpool_4chan_reg_preds'
+else:
+    name = 'pbpe_new_mae_denserelu_bnsegonly_weights1.01_lrdrop0.8_lr0.0005_3localfeats_woseq6_localzeromean'
+    # TODO pbpe original
+    # name = 'pbpe_orig'
+
 steps = None
 
 # use predicted regions when running 4-chan model - only applied when using generator

@@ -30,7 +30,7 @@ The loss function used during training the model is defined as huber loss with a
 \mathcal{L}_{DDP}(g(\mathbf{D}, \theta), \mathbf{C}, \mathbf{p}, \alpha) = (1 - \alpha) \cdot \mathcal{L}_R(\mathbf{C} \times g(\mathbf{D}, \theta), \mathbf{p}) + \alpha \cdot \|g(\mathbf{D}, \theta)\|_1 \label{eq:huberloss}
 \end{equation} 
 
-\noindent In the equation above, $g(\mathbf{D}, \theta)$ represents a non-linear function computed by the neural model on the input depth map $\mathbf{D}$ with trainable parameters $\theta$, returning a column vector of length $K$ (number of clustered prototype poses), $\mathbf{C}$ is a matrix with $K$ columns containing prototype poses, $\mathbf{p}$ stands for the vectorized ground-truth pose,  and $\alpha$ is a regularization coefficient  – a hyperparameter to control the magnitude of the resulting weights of the prototypes.
+\noindent In the equation above, $g(\mathbf{D}, \theta)$ represents a non-linear function computed by the neural model on the input depth map $\mathbf{D}$ with trainable parameters $\theta$, returning a column vector of length $K$ (number of clustered prototype poses), $\mathbf{C}$ is a matrix with $K$ columns containing prototype poses, $\mathbf{p}$ stands for the vectorized ground truth pose,  and $\alpha$ is a regularization coefficient  – a hyperparameter to control the magnitude of the resulting weights of the prototypes.
 
 \subsection{Initialization}
 
@@ -41,7 +41,7 @@ The model learns using the Adam optimizer with the learning rate set to $10^{-3}
 
 \subsection{Data pre-processing}
 
-In the pre-processing stage, the depth maps are re-sized to match the model input dimensions. First, the image is cropped along the larger dimension on both sides to fit the square, assuming the subject is located near the center of the image. Then, the image is re-sized to $100\times100$ px. Afterwards, the depth values are normalized to range [0,1]. Also, the input depth images are normalized globally by subtracting the mean image of the training set from each depth sample. The ground-truth poses are being normalized as well – to zero mean and one standard deviation.\par
+In the pre-processing stage, the depth maps are re-sized to match the model input dimensions. First, the image is cropped along the larger dimension on both sides to fit the square, assuming the subject is located near the center of the image. Then, the image is re-sized to $100\times100$ px. Afterwards, the depth values are normalized to range [0,1]. Also, the input depth images are normalized globally by subtracting the mean image of the training set from each depth sample. The ground truth poses are being normalized as well – to zero mean and one standard deviation.\par
 \vspace{5mm}
 \noindent 
 Concerning the datasets used for evaluation, UBC3V already comes with the split into the train, validation and test set. The ITOP dataset is originally divided into the train and test set only, thus the validation set was acquired by random sampling of the train data. The ratio was set to 80/20, meaning the data used for validation are representing 20\% of the train set. During the experiments, only the hard-pose part of UBC3V, and the side-view part (for single-view approach) of the ITOP dataset were used.
@@ -159,7 +159,7 @@ As the next pre-processing step, the point clouds were sub-sampled to the specif
 \end{figure}
 
 \noindent
-Since the used datasets (except for the UBC3V) captures real-world data, the raw point clouds contain a lot of noise. Therefore, we consider suitable preprocessing as a very important step. First, the background wall and ground floor are removed by MSAC plane fitting (which is a variation of RANSAC algorithm). Then, the segmentation of the point cloud into clusters based on Euclidean distance is performed, and the biggest cluster is considered as the desired subject. Fig. \ref{fig:mhad} depicts a sample from MHAD dataset, before and after applying the segmentation pipeline.% TODO spoliehame sa pri clusterovani na to, ze ludsky subjekt je v obraze najvacsi, teda nenachadzaju sa v scene ine objekty, vacsie ako actor.
+Since the used datasets (except for the UBC3V) captures real-world data, the raw point clouds contain a lot of noise. Therefore, we consider suitable preprocessing as a very important step. First, the background wall and the floor are removed by MSAC plane fitting (which is a variation of RANSAC algorithm). Then, the segmentation of the point cloud into clusters based on Euclidean distance is performed, and the biggest cluster is considered as the desired subject. Fig. \ref{fig:mhad} depicts a sample from MHAD dataset, before and after applying the segmentation pipeline.% TODO spoliehame sa pri clusterovani na to, ze ludsky subjekt je v obraze najvacsi, teda nenachadzaju sa v scene ine objekty, vacsie ako actor.
 \par
 
 \vspace{5mm}

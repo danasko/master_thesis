@@ -392,7 +392,10 @@ def run_segnet(generator, x, mode='test', save=True):
                         fill) + '.npy', pred)
     else:
         if dataset == 'ITOP' or dataset == 'CMU':
-            pred = segnet_model.predict(x, batch_size=batch_size, verbose=1)
+            pred1 = segnet_model.predict(x[:x.shape[0]//2], batch_size=batch_size, verbose=1).argmax(axis=-1).astype(np.int)
+            pred2 = segnet_model.predict(x[x.shape[0]//2:], batch_size=batch_size, verbose=1).argmax(axis=-1).astype(np.int)
+            pred = np.concatenate([pred1, pred2], axis=0)
+            pred = np.expand_dims(pred, -1)
         else:
             pred = segnet_model.predict_generator(generator, use_multiprocessing=True, steps=None, workers=workers,
                                                   verbose=1)
@@ -458,7 +461,7 @@ if __name__ == "__main__":
 
     checkpoint = keras.callbacks.ModelCheckpoint('data/models/' + dataset + '/{epoch:02d}eps_' + name + '.h5',
                                                  verbose=1,
-                                                 period=5)
+                                                 period=1)
 
     callbacks_list = [lrate, tbCallBack, checkpoint]
 
@@ -603,7 +606,8 @@ if __name__ == "__main__":
                       callbacks=callbacks_list,
                       validation_split=0.2, shuffle=True, initial_epoch=0)  # 0.2
         elif mymodel:
-            x_train = np.concatenate([x_train, regs_train], axis=-1)
+            regs_train_pred = run_segnet(None, x_train, mode='train', save=False)
+            x_train = np.concatenate([x_train, regs_train_pred], axis=-1)
             model.fit(x_train, y_train, batch_size=batch_size,
                       epochs=10,
                       callbacks=callbacks_list,
