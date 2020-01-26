@@ -1,20 +1,22 @@
-dataset = 'CMU'
+dataset = 'MHAD'
 batch_size = 32
 k = 50
 centers = None
 thresh = 10  # in cm
 numPoints = 2048  # number of points in each pcl
-singleview = False
+singleview = True
 # test_method = '11subjects'
 test_method = 'random25'
 
 # do NOT set both to True at once
-segnet = False
-mymodel = True
+segnet = True
+mymodel = False
 
 assert not segnet or not mymodel
 
 if dataset == 'MHAD':
+    poolTo1 = True
+    globalAvg = False
     if singleview:
         numTrainSamples = 210917
         numTestSamples = 70305
@@ -30,6 +32,8 @@ if dataset == 'MHAD':
     numRegions = 29  # 35
     fill = 6
 elif dataset == 'UBC':
+    poolTo1 = True
+    globalAvg = True
     numTrainSamples = 59059
     numValSamples = 19019
     numTestSamples = 19019
@@ -38,6 +42,8 @@ elif dataset == 'UBC':
     numRegions = 18
     fill = 5
 elif dataset == 'ITOP':
+    poolTo1 = False
+    globalAvg = True
     numTrainSamples = 17991
     numValSamples = 0
     numTestSamples = 4863
@@ -46,6 +52,8 @@ elif dataset == 'ITOP':
     numRegions = 15
     fill = 6
 else:  # 'CMU'
+    poolTo1 = False
+    globalAvg = True
     numTrainSamples = 112596
     numValSamples = 0
     numTestSamples = 28148
@@ -54,29 +62,32 @@ else:  # 'CMU'
     numRegions = 15
     fill = 6
 
-# scaler_minX, scaler_minY, scaler_minZ = None, None, None
-# scaler_scaleX, scaler_scaleY, scaler_scaleZ = None, None, None
-
 pcls_min = [1000000, 1000000, 1000000]
 pcls_max = [-1000000, -1000000, -1000000]
-# pcls_min = None
-# pcls_max = None
 
 poses_min = [1000000, 1000000, 1000000]
 poses_max = [-1000000, -1000000, -1000000]
 
+view = 'SV' if singleview and dataset == 'MHAD' else ''
 if segnet:
-    name = 'segnet_lr0.001_4residuals_2.blockconvs512'
+    name = view + 'segnet_lr0.001_4residuals_2.blockconvs512'
 elif mymodel:
-    name = 'mymodel_lr0.0005_noproto_convs1x1_poolto1_512_256_1residual_nomaxpool_globalavgpool_4chan_reg_preds'
+    name = view + 'mymodel_lr0.001_noproto_convs1x1_512_256_1residual_' + 'poolto1' if poolTo1 else 'nomaxpool' + '_' \
+                                                                                                    + 'globalavgpool' if globalAvg else '' + '_4chan_reg_preds_onsegnet13eps'
 else:
-    name = 'pbpe_new_mae_denserelu_bnsegonly_weights1.01_lrdrop0.8_lr0.0005_3localfeats_woseq6_localzeromean'
-    # TODO pbpe original
+    name = view + 'pbpe_new_mae_denserelu_bnsegonly_weights1.01_lrdrop0.8_lr0.0005_3localfeats_woseq6_localzeromean'
     # name = 'pbpe_orig'
 
-steps = None
+# TODO try limited steps with SV
+if singleview:
+    steps = 3000
+else:
+    steps = None
 
 # use predicted regions when running 4-chan model - only applied when using generator
-predicted_regs = False
+if mymodel and (dataset in ['MHAD', 'UBC']):
+    predicted_regs = True
+else:
+    predicted_regs = False
 
-workers = 3  # mp.cpu_count()
+workers = 4  # mp.cpu_count()

@@ -37,7 +37,7 @@ def tile(global_feature, numPoints):
     return Kb.repeat_elements(global_feature, numPoints, 1)
 
 
-def my_model():
+def my_model(poolTo1=False, globalAvg=True):
     input_points = Input(shape=(numPoints, 1, 4))
     local_feature1 = Conv2D(filters=512, kernel_size=(1, 1), input_shape=(numPoints, 1, 4),
                             kernel_initializer='glorot_normal',
@@ -53,8 +53,8 @@ def my_model():
     shortcut1 = keras.layers.add([local_feature1_exp, local_feature2_exp, local_feature3])  # add
 
     # res1 = keras.layers.Activation('relu')(res1)  # a bez tohto
-
-    # global_feature = MaxPooling2D(pool_size=(2048, 1))(shortcut1)
+    if poolTo1:
+        shortcut1 = MaxPooling2D(pool_size=(2048, 1))(shortcut1)
 
     # local_feature2_exp = Conv2D(filters=2048, kernel_size=(1, 1))(local_feature2)
     # global_exp = Lambda(tile, arguments={'numPoints': 128})(
@@ -77,8 +77,12 @@ def my_model():
     #     global_feature)  # shape= (b, numPoints=2048, 1, 2048)
     # f = concatenate([local_feature2, local_feature3, global_feature_exp], axis=-1)
     # f = Conv2D(filters=256, kernel_size=(1,1), activation='relu', kernel_initializer='glorot_normal')(global_feature)
-    # f = Flatten()(f2)
-    f = keras.layers.GlobalAveragePooling2D()(f2)
+
+    if globalAvg:
+        f = keras.layers.GlobalAveragePooling2D()(f2)
+    else:
+        f = Flatten()(f2)
+
     f = Dense(512, kernel_initializer='glorot_normal', activation='relu')(f)
     f = Dense(256, kernel_initializer='glorot_normal', activation='relu')(f)
     # output1 = Dense(k, name='output1', activation='softmax', kernel_initializer='glorot_normal')(f)
@@ -376,9 +380,9 @@ def real_time_predict(test_x, get_output_func):
 
 def run_segnet(generator, x, mode='test', save=True):
     # Predict regions from segnet and save
-    segnet_model = load_model('data/models/' + dataset + '/10eps_segnet_lr0.001_4residuals_2.blockconvs512.h5')
+    segnet_model = load_model('data/models/' + dataset + '/20eps_segnet_lr0.001_4residuals_2.blockconvs512.h5')
+    get_output = Kb.function([segnet_model.layers[0].input, Kb.learning_phase()], [segnet_model.layers[-1].output])
     if mode == 'train' and dataset != 'ITOP' and dataset != 'CMU':
-        get_output = Kb.function([segnet_model.layers[0].input, Kb.learning_phase()], [segnet_model.layers[-1].output])
         for b_num in range(numTrainSamples // batch_size):
             pcl_batch = np.load(
                 'data/' + dataset + '/' + mode + '/scaledpclglobalbatches/' + str(b_num + 1).zfill(fill) + '.npy')
@@ -392,15 +396,19 @@ def run_segnet(generator, x, mode='test', save=True):
                         fill) + '.npy', pred)
     else:
         if dataset == 'ITOP' or dataset == 'CMU':
-            pred1 = segnet_model.predict(x[:x.shape[0]//2], batch_size=batch_size, verbose=1).argmax(axis=-1).astype(np.int)
-            pred2 = segnet_model.predict(x[x.shape[0]//2:], batch_size=batch_size, verbose=1).argmax(axis=-1).astype(np.int)
+            pred1 = segnet_model.predict(x[:x.shape[0] // 2], batch_size=batch_size, verbose=1).argmax(axis=-1).astype(
+                np.int)
+            # pred1 = get_output([x[:x.shape[0] // 2], 0])[0].argmax(axis=-1).astype(np.int)
+            # pred2 = get_output([x[x.shape[0] // 2:], 0])[0].argmax(axis=-1).astype(np.int)
+            pred2 = segnet_model.predict(x[x.shape[0] // 2:], batch_size=batch_size, verbose=1).argmax(axis=-1).astype(
+                np.int)
             pred = np.concatenate([pred1, pred2], axis=0)
             pred = np.expand_dims(pred, -1)
         else:
             pred = segnet_model.predict_generator(generator, use_multiprocessing=True, steps=None, workers=workers,
                                                   verbose=1)
         if save:
-            np.save('data/' + dataset + '/' + mode + '/predicted_regs.npy', pred)
+            np.save('data/' + dataset + '/' + mode + '/171204_pose6_predicted_regs.npy', pred)
         return pred
 
 
@@ -409,7 +417,7 @@ def step_decay(epoch):
     # if dataset == 'ITOP':
     #     initial_lrate = 0.0005
     # else:
-    if mymodel or segnet:
+    if segnet or mymodel:
         initial_lrate = 0.001
     else:
         initial_lrate = 0.0005  # 4chan 0.001 PBPE 0.0005
@@ -434,7 +442,7 @@ if __name__ == "__main__":
     if segnet:
         model = seg_net()
     elif mymodel:
-        model = my_model()
+        model = my_model(poolTo1=poolTo1, globalAvg=globalAvg)
     else:
         model, test_model = PBPE_new()
 
@@ -566,10 +574,9 @@ if __name__ == "__main__":
     # model = load_model(
     #     'data/models/'+dataset+'/10eps_mymodel_lr0.001_noproto_convs1x1_poolto1_512_256_1residual_globalavgpool_4chan_reg_preds.h5')
 
-    # model = load_model(z
-    #     'data/models/' + dataset + '/10eps_segnet_lr0.001_4residuals_2.blockconvs512.h5')
+    model = load_model('data/models/' + dataset + '/06eps_SVsegnet_lr0.001_4residuals_2.blockconvs512.h5')
 
-    # model = load_model('data/models/CMU/09eps_'+name+'.h5')
+    # model = load_model('data/models/CMU/20eps_' + name + '.h5')
 
     # test_model = load_model(
     #     'data/models/MHAD/test_models/20eps_batches_11subs_fixeddatafull_mae_denserelu_bnsegonly_weights1.01_lrdrop0.8_lr0.0005_3localfeats.h5')
@@ -588,9 +595,6 @@ if __name__ == "__main__":
         # print('test avg error: ', testavg_err)
         # predictions = test_model.predict(test_x, batch_size=batch_size)
     elif dataset == 'CMU':  #### CMU panoptic demo #### # todo rewrite as generator ?
-        # idx = 0
-        # regs_train = np.empty(shape=(numTrainSamples, numPoints, 1, numRegions))
-        # regs_train = np.load('data/CMU/train/regions.npy', allow_pickle=True)
         regs_train = np.load('data/CMU/train/regs_onehot.npy', allow_pickle=True)
         x_train = np.load('data/CMU/train/scaled_pcls_lzeromean.npy', allow_pickle=True)
         x_train = np.expand_dims(x_train, axis=2)
@@ -602,16 +606,18 @@ if __name__ == "__main__":
         # np.save('data/CMU/train/regs_onehot.npy', regs_train)
         if segnet:
             model.fit(x_train, regs_train, batch_size=batch_size,
-                      epochs=10,
+                      epochs=20,
                       callbacks=callbacks_list,
-                      validation_split=0.2, shuffle=True, initial_epoch=0)  # 0.2
+                      validation_split=0.2, shuffle=True, initial_epoch=13)  # 0.2
         elif mymodel:
-            regs_train_pred = run_segnet(None, x_train, mode='train', save=False)
+            regs_train_pred = run_segnet(None, x_train, mode='train', save=True)
+            regs_train_pred = np.load('data/CMU/train/predicted_regs.npy', allow_pickle=True).astype(np.int)
             x_train = np.concatenate([x_train, regs_train_pred], axis=-1)
             model.fit(x_train, y_train, batch_size=batch_size,
-                      epochs=10,
+                      epochs=20,
                       callbacks=callbacks_list,
-                      validation_split=0.2, shuffle=True, initial_epoch=0)  # 0.2
+                      validation_split=0.2, shuffle=True, initial_epoch=10)  # 0.2
+            # pass
         else:  # PBPE
             model.fit(x_train, {'output1': y_train, 'output2': regs_train}, batch_size=batch_size,
                       epochs=10,
@@ -622,15 +628,27 @@ if __name__ == "__main__":
         x_test = np.expand_dims(x_test, axis=2)
         y_test = np.load('data/CMU/test/scaled_poses_lzeromean.npy', allow_pickle=True)
         y_test = y_test.reshape((y_test.shape[0], numJoints * 3))
+
+        # todo test on 171204_pose6 sequence - video results
+        # x_test = np.load('data/CMU/test/171204_pose6_scaledpcls_lzeromean.npy', allow_pickle=True)
+        # x_test = np.expand_dims(x_test, axis=2)
+        # y_test = np.load('data/CMU/test/171204_pose6_scaledposes_lzeromean.npy', allow_pickle=True)
+        # y_test = y_test.reshape((y_test.shape[0], numJoints * 3))
+
         if segnet:
             regs_test = np.load('data/CMU/test/regions.npy', allow_pickle=True)
+            # regs_test = np.load('data/CMU/test/171204_pose6_regs.npy', allow_pickle=True) # todo
             regs_test = np.eye(numRegions, dtype=np.int)[regs_test]
             regs_test = regs_test.reshape((regs_test.shape[0], numPoints, 1, numRegions))
             test_metrics = model.evaluate(x_test, regs_test, batch_size=batch_size)
         elif mymodel:
-            regs_test_pred = run_segnet(None, x_test, mode='test', save=False)
+            # regs_test_pred = run_segnet(None, x_test, mode='test', save=True)
+            regs_test_pred = np.load('data/CMU/test/predicted_regs.npy', allow_pickle=True).astype(np.int)
+            # regs_test_pred = np.load('data/CMU/test/171204_pose6_predicted_regs.npy', allow_pickle=True).astype(np.int)
             x_test = np.concatenate([x_test, regs_test_pred], axis=-1)
             test_metrics = model.evaluate(x_test, y_test, batch_size=batch_size)
+            # test_preds = model.predict(x_test, batch_size=batch_size, verbose=1)
+            # np.save('data/CMU/test/171204_pose6_predictions.npy', test_preds)
         else:  # PBPE
             test_metrics = test_model.evaluate(x_test, y_test, batch_size=batch_size)
     else:
@@ -652,16 +670,13 @@ if __name__ == "__main__":
                                        test=True, elevensubs=(test_method == '11subjects'), segnet=segnet,
                                        four_channels=mymodel, predicted_regs=predicted_regs)
 
-        # model.fit_generator(generator=train_generator, epochs=10,
-        #                     # validation_data=test_generator,
-        #                     # validation_data=(valid_generator if dataset == 'UBC' else test_generator),
-        #                     # TODO remove test generator from validation
-        #                     callbacks=callbacks_list, initial_epoch=0, use_multiprocessing=True,  # False
-        #                     workers=workers, shuffle=True, max_queue_size=10)  # 20
-        #     # test_model.fit_generator(generator=train_generator, epochs=10,  # validation_data=valid_generator,
-        #     #                     callbacks=callbacks_list, initial_epoch=0, use_multiprocessing=False,  # False
-        #     #                     workers=workers, shuffle=True, max_queue_size=10)  # 20
-        #
+        model.fit_generator(generator=train_generator, epochs=10,
+                            # validation_data=test_generator,
+                            # validation_data=(valid_generator if dataset == 'UBC' else test_generator),
+                            # TODO remove test generator from validation
+                            callbacks=callbacks_list, initial_epoch=6, use_multiprocessing=True,  # False
+                            workers=workers, shuffle=True, max_queue_size=10)  # 20
+        # run_segnet(train_generator, None, 'train', True)
 
     # # # # save the model
     # model.save(
@@ -684,6 +699,7 @@ if __name__ == "__main__":
     #
     # TODO run segnet and save predicted regions
     # pred_regs = run_segnet(generator=None, mode='train', save=True)
+
 
     # predictions = np.load('data/MHAD/test/predictions_testmodel_20eps.npy')
     # poses = predictions[0]  # output1

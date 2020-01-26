@@ -29,7 +29,8 @@ def CMU_to_npy(seq_name):
 
     arr = np.asarray(arr)
     print(arr.shape)
-    np.save('data/CMU/train/pcls_poses/' + seq_name + '.npy', arr)
+    np.save('data/CMU/test/' + seq_name + '.npy', arr)
+    # np.save('data/CMU/train/pcls_poses/' + seq_name + '.npy', arr)
 
 
 def UBC_convert_pcl_files(index=0, start=1, end=60, mode='train', random_subsampling=False):
@@ -444,35 +445,34 @@ def scale_poses(mode='train', data='UBC'):
     # print(poses_min, poses_max)
 
 
-def generate_regions_all(mode='train', data='UBC', start=None, end=None):
+def generate_regions(mode='train', data='UBC', start=None, end=None):
     # [pcls_min, pcls_max] = np.load('data/' + data + '/train/pcls_minmax.npy')
     # [poses_min, poses_max] = np.load('data/' + data + '/train/poses_minmax.npy')
     if data == 'CMU':
-        print('Generating regions for sequence ...')
-        pcls = np.load('data/CMU/train/pcls.npy')
-        poses = np.load('data/CMU/train/poses.npy')
-        regs = np.empty((pcls.shape[0], numPoints, 1), dtype=np.int)
+        # print('Generating regions for sequence ...')
+        # pcls = np.load('data/CMU/train/pcls.npy')
+        # poses = np.load('data/CMU/train/poses.npy')
+        # regs = np.empty((pcls.shape[0], numPoints, 1), dtype=np.int)
+        #
+        # test_pcls = np.load('data/CMU/test/pcls.npy')
+        # test_poses = np.load('data/CMU/test/poses.npy')
+        # test_regs = np.empty((test_pcls.shape[0], numPoints, 1), dtype=np.int)
+        #
+        # for i in range(pcls.shape[0]):
+        #     regs[i] = automatic_annotation(poses[i], pcls[i])
+        # for i in range(test_pcls.shape[0]):
+        #     test_regs[i] = automatic_annotation(test_poses[i], test_pcls[i])
+        #
+        # np.save('data/CMU/train/regions.npy', regs)
+        # np.save('data/CMU/test/regions.npy', test_regs)
 
-        test_pcls = np.load('data/CMU/test/pcls.npy')
-        test_poses = np.load('data/CMU/test/poses.npy')
-        test_regs = np.empty((test_pcls.shape[0], numPoints, 1), dtype=np.int)
-
-        for i in range(pcls.shape[0]):
-            regs[i] = automatic_annotation(poses[i], pcls[i])
-        for i in range(test_pcls.shape[0]):
-            test_regs[i] = automatic_annotation(test_poses[i], test_pcls[i])
-
-        np.save('data/CMU/train/regions.npy', regs)
-        np.save('data/CMU/test/regions.npy', test_regs)
-
-        # for seq in ['171204_pose5.npy', '171204_pose6.npy', '171026_pose1.npy', '171026_pose2.npy',
-        #             '171026_pose3.npy'] : # os.listdir('data/CMU/train/pcls_poses/'):
-        #     print(seq.split('.')[0])
-        #     arr = np.load('data/CMU/train/pcls_poses/' + seq, allow_pickle=True)
-        #     regs = np.empty((arr.shape[0], numPoints, 1))
-        #     for i in range(arr.shape[0]):
-        #         regs[i] = automatic_annotation(arr[i, 1], arr[i, 0])
-        #     np.save('data/CMU/train/regions/' + seq.split('.')[0] + '_regs.npy', regs)
+        for seq in ['171204_pose6.npy']:  # os.listdir('data/CMU/train/pcls_poses/'):
+            # print(seq.split('.')[0])
+            arr = np.load('data/CMU/test/' + seq, allow_pickle=True)
+            regs = np.empty((arr.shape[0], numPoints, 1), dtype=np.int)
+            for i in range(arr.shape[0]):
+                regs[i] = automatic_annotation(pose=arr[i, 1], pcl=arr[i, 0])
+            np.save('data/CMU/test/' + seq.split('.')[0] + '_regs.npy', regs)
 
     else:
         if data == 'UBC':
@@ -764,7 +764,8 @@ if __name__ == "__main__":
     # CMU_to_npy('171026_pose3')
 
     # split_CMU(0.2) # wo pose6
-    # generate_regions_all(data='CMU')
-    find_minmax(data='CMU')  # todo zero mean local
+    # generate_regions(data='CMU')
+    # find_minmax(data='CMU')  # todo zero mean local
     # scale_CMU(mode='test')
-    # pass
+
+    pass
