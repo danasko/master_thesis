@@ -10,7 +10,7 @@ The DDP model is based on the idea of linearly combining the predefined prototyp
 
 \subsection{Model structure}
 
-The architecure of the DDP model itself is relatively simple. The model is actually not very deep, it consists of five convolutional blocks, each followed by ReLU activation. First three blocks also contain a pooling layer, as indicated in Fig \ref{fig:ddp}. After the convolutional blocks, there are three fully-connected layers. The number of neurons in the output layer is a hyperparameter set to the number of prototype poses clustered from the dataset. The input to the model is a one-channel depth map of size 100 x 100 pixels.\par
+The architecure of the DDP model itself is relatively simple. The model is actually not very deep, it consists of five convolutional blocks, each followed by ReLU activation. First three blocks also contain a pooling layer, as indicated in Figure \ref{fig:ddp}. After the convolutional blocks, there are three fully-connected layers. The number of neurons in the output layer is a hyperparameter set to the number of prototype poses clustered from the dataset. The input to the model is a one-channel depth map of size 100 x 100 pixels.\par
 
 \vspace{5mm}
 \begin{figure}[H]
@@ -24,7 +24,7 @@ The architecure of the DDP model itself is relatively simple. The model is actua
 
 \subsection{Loss function}
 
-The loss function used during training the model is defined as huber loss with a regularization term, as described in Eq. \ref{eq:huberloss}, where $\mathcal{L}_R$ is the (residual) huber loss.\par
+The loss function used during training the model is defined as huber loss with a regularization term, as described in Equation \ref{eq:huberloss}, where $\mathcal{L}_R$ is the (residual) huber loss.\par
 
 \begin{equation}
 \mathcal{L}_{DDP}(g(\mathbf{D}, \theta), \mathbf{C}, \mathbf{p}, \alpha) = (1 - \alpha) \cdot \mathcal{L}_R(\mathbf{C} \times g(\mathbf{D}, \theta), \mathbf{p}) + \alpha \cdot \|g(\mathbf{D}, \theta)\|_1 \label{eq:huberloss}
@@ -51,12 +51,12 @@ Concerning the datasets used for evaluation, UBC3V already comes with the split 
 %\subsection{Test phase}
 
 \subsection{Modifications}
-This section introduces several modifications we made to the proposed DDP model, in order to lower the mean error of the predictions. Since the experience of the researchers made us believe that the implementation of the same model in different framework often leads to different results, we diverted from the original architecture of the model, as well as the initial optimization parameters.\par
+This section introduces several modifications we have made to the proposed DDP model, in order to lower the mean error of the predictions. Since the experience of the researchers made us believe that the implementation of the same model in different framework often leads to different results, we diverted from the original architecture of the model, as well as the initial optimization parameters.\par
 \vspace{5mm}
 
 \noindent
-However, still inspired by the DDP model, we have built a slightly deeper, more complex model, in an attempt to improve the final estimations. We used both ITOP and UBC3V datasets again, for the evaluation of the modified model.
-The architecture of the modified DDP network is shown in Fig. \ref{fig:mddp}. As shown in the figure, we significantly increased the amount of dropout layers, as the model tended to overfit the training data. Moreover, two additional convolutional layers were stacked in the model architecture.\par
+However, still inspired by the DDP model, we have built a slightly deeper, more complex model, in an attempt to improve the final estimations, assuming the original architecture was not able to fully retain the complexity of the specified task. We used both ITOP and UBC3V datasets again, for the evaluation of the modified model.
+The architecture of the modified DDP network is shown in Figure \ref{fig:mddp}. As shown in the figure, we significantly increased the amount of dropout layers, as the model tended to overfit the training data. Moreover, two additional convolutional layers were stacked in the model architecture, to enhance the nonlinearity of the network (introduced by the ReLU activations used after convolutions).\par
 \vspace{5mm}
 
 \begin{figure}[H]
@@ -68,7 +68,7 @@ The architecture of the modified DDP network is shown in Fig. \ref{fig:mddp}. As
 \end{figure}
 
 
-\noindent Besides the structure of the model, some of the hyperparameters were slightly modified as well, mainly due to switching to another deep learning framework, where the back-end procedures differ, which may be resulting in a convergence to different outputs. The regularization parameter was fixed to $\alpha = 0.1$ for both benchmark datasets. The residual huber loss was replaced by an absolute error, and the L2 norm was used in the regularization term instead of the L1 norm. Also, the initial learning rate was reduced to $10^{-4}$.\par
+\noindent Besides the structure of the model, some of the hyperparameters were slightly modified as well, mainly due to switching to another deep learning framework, where the back-end procedures differ, which may be resulting in a convergence to different outputs. Based on the experiments, the regularization parameter was fixed to $\alpha = 0.1$ for both benchmark datasets. The residual huber loss has been replaced by an absolute error, and the L2 norm was used in the regularization term instead of the L1 norm. Even though in the original paper, the authors indicate the L1 norm is more robust to outliers, our tests in the utilized framework led to a conclusion, that using the L2 norm as a regularization term in the loss function was more helpful to the loss minimization. Also, the initial learning rate was reduced to $10^{-4}$, due to an occasional undesirable divergent behavior of the model loss.\par
 \vspace{5mm}
 \noindent Regarding the test phase, the experiments on the ITOP dataset have shown that even though the test set seems sufficiently representative (that is, retains the approximate distribution of the training set), the error on the test data is by far worse than the error on previously unseen data obtained by random sampling of the training set (used as a validation set). This is probably caused by the fact, that the input data is formed by a sequence of video frames, thus many subsequent samples captures almost the same content, with only a minimal shift between the frames. As a result, a lot of the validation samples are nearly the same as the ones used for training.\par
 \vspace{5mm}
@@ -85,7 +85,7 @@ The model is heavily inspired by the implementation of PointNet \cite{DBLP:journ
 
 
 \subsection{Model structure}
-The architecture of the proposed model consists of two branches (or sub-networks). The auxiliary sub-network is included to compute the body part segmentation on the fly, while the main network regresses the joint locations. The basic idea behind the structure of the model is the aggregation of both local and global features of the input point cloud in the auxiliary part-segmentation network. Without the sub-network, almost all of the local context would be lost because of the max-pooling operation in the intermediate layers. The incorporation of the local features helps the network understand the relationships among particular local regions of the human body. The whole architecture of the stated model is shown in Fig. \ref{fig:PBPE}.\par
+The architecture of the proposed model consists of two branches (or sub-networks). The auxiliary sub-network is included to compute the body part segmentation on the fly, while the main network regresses the joint locations. The basic idea behind the structure of the model is the aggregation of both local and global features of the input point cloud in the auxiliary part-segmentation network. Without the sub-network, almost all of the local context would be lost because of the max-pooling operation in the intermediate layers. The incorporation of the local features helps the network understand the relationships among particular local regions of the human body. The whole architecture of the stated model is shown in Figure \ref{fig:PBPE}.\par
 \vspace{5mm}
 
 \begin{figure}[H]
@@ -97,7 +97,7 @@ The architecture of the proposed model consists of two branches (or sub-networks
 \end{figure}
 
 \noindent
-As already mentioned, the unorganized and irregular depth input represented by a point cloud is a key factor in this architecture. For this very reason, the engagement of the classic convolution operation would be meaningless, since the point cloud has provides no explicit spatial information about the neighboring points. In this case, pseudo-convolutions with a kernel size of $1\times1$ are employed. The function of such pseudo-convolution layers is reducing (or expanding) the dimensionality in the filter space. A stack of the $1 \times 1$ convolution layers, each followed by batch normalization and ReLU activation, is illustrated in Fig. \ref{fig:PBPE} as a shared multilayer perceptron (shared MLP). The numbers in the parentheses indicate the number of filters in particular layers.\par
+As already mentioned, the unorganized and irregular depth input represented by a point cloud is a key factor in this architecture. For this very reason, the engagement of the classic convolution operation would be meaningless, since the point cloud has provides no explicit spatial information about the neighboring points. In this case, pseudo-convolutions with a kernel size of $1\times1$ are employed. The function of such pseudo-convolution layers is reducing (or expanding) the dimensionality in the filter space. A stack of the $1 \times 1$ convolution layers, each followed by batch normalization and ReLU activation, is illustrated in Figure \ref{fig:PBPE} as a shared multilayer perceptron (shared MLP). The numbers in the parentheses indicate the number of filters in particular layers.\par
 \vspace{5mm}
 \noindent After the shared multilayer perceptron, the regression branch consists of two fully-connected layers and an output layer. Each dense layer is also followed by a batch normalization layer and ReLU activation. The input of the model is of shape $(b \times p \times 3)$, where $b$ represents the batch size, and $p$ is the number of points in the input point cloud, each located by three coordinates. The output shape of both sub-networks depends on the number of joints in the skeleton structure. The number of joints, as well as the number of points the point clouds are containing, is a hyper-parameter.\par
 \vspace{5mm}
@@ -122,7 +122,7 @@ The weights inside the model are sampled from the normal distribution with zero 
 
 %\subsubsection{ITOP}
 
-% ..TODO text + ref. Fig. \ref{fig:itop_seg} 
+% ..TODO text + ref. Figure \ref{fig:itop_seg} 
 
 %\begin{figure}[H]
 %\begin{center}
@@ -159,7 +159,7 @@ As the next pre-processing step, the point clouds were sub-sampled to the specif
 \end{figure}
 
 \noindent
-Since the used datasets (except for the UBC3V) captures real-world data, the raw point clouds contain a lot of noise. Therefore, we consider suitable preprocessing as a very important step. First, the background wall and the floor are removed by MSAC plane fitting (which is a variation of RANSAC algorithm). Then, the segmentation of the point cloud into clusters based on Euclidean distance is performed, and the biggest cluster is considered as the desired subject. Fig. \ref{fig:mhad} depicts a sample from MHAD dataset, before and after applying the segmentation pipeline.% TODO spoliehame sa pri clusterovani na to, ze ludsky subjekt je v obraze najvacsi, teda nenachadzaju sa v scene ine objekty, vacsie ako actor.
+Since the used datasets (except for the UBC3V) captures real-world data, the raw point clouds contain a lot of noise. Therefore, we consider suitable preprocessing as a very important step. First, the background wall and the floor are removed by MSAC plane fitting (which is a variation of RANSAC algorithm). Then, the segmentation of the point cloud into clusters based on Euclidean distance is performed, and the biggest cluster is considered as the desired subject. Figure \ref{fig:mhad} depicts a sample from MHAD dataset, before and after applying the segmentation pipeline.% TODO spoliehame sa pri clusterovani na to, ze ludsky subjekt je v obraze najvacsi, teda nenachadzaju sa v scene ine objekty, vacsie ako actor.
 \par
 
 \vspace{5mm}
@@ -169,7 +169,7 @@ As already pointed out in the original proposal of the PBPE model, the skeleton 
 \textcolor{red}{TODO compare 29 vs 35 joints in Table - in Results chapter} As shown in Table ..., it is interesting to observe how the number of joints in the skeleton (and the complexity of the model) influences the pose estimation results.\par
 \vspace{5mm}
 \noindent 
-As the real datasets do not comprise the partition into the particular body regions, the automated technique for the annotation has been proposed in the original implementation of PBPE model. Each skeletal joint is assigned one body region. Using the automatic annotation, each point of the point cloud is associated with the closest skeletal joint based on Euclidean distance. The example of the annotated point cloud is shown in Fig. \ref{fig:reg_annotation}.\par 
+As the real datasets do not comprise the partition into the particular body regions, the automated technique for the annotation has been proposed in the original implementation of PBPE model. Each skeletal joint is assigned one body region. Using the automatic annotation, each point of the point cloud is associated with the closest skeletal joint based on Euclidean distance. The example of the annotated point cloud is shown in Figure \ref{fig:reg_annotation}.\par 
 
 \vspace{5mm}
 \begin{figure}[H]
@@ -195,7 +195,7 @@ This section is dedicated to the implementation of a novel approach we present a
 
 
 \subsection{Model structure}
-In both networks of the pipeline, the input point clouds are being processed in the same fashion as in the PBPE model, i.e. by employing the $1 \times 1$ convolutional layers. The architecture of the whole pipeline is described in Fig. \ref{fig:4chan_pipeline}.\par
+In both networks of the pipeline, the input point clouds are being processed in the same fashion as in the PBPE model, i.e. by employing the $1 \times 1$ convolutional layers. The architecture of the whole pipeline is described in Figure \ref{fig:4chan_pipeline}.\par
 \vspace{5mm}
 \noindent First, an input point cloud of the captured subject is passed to the body segmentation network, assuming the input is already sub-sampled to the specified number of points. The segmentation model contains two shared multilayer perceptron blocks, which are – compared to those used in the PBPE model – upgraded by residual skip connections added between the convolution operations. The outcome of the first block represents the local features extracted from the input. Next, much like in the PBPE model, a max-pooling across all points is applied and the obtained global features are concatenated with the local features. Subsequently, the gathered features are fed into the second block of pseudo-convolutions. Here, apart from the shortcut connections, a dropout layer is included between each convolution. The segmentation network outputs a point-wise classification of the point cloud into the corresponding body regions.\par
 \vspace{5mm}
