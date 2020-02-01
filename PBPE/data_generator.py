@@ -20,8 +20,11 @@ class DataGenerator(Sequence):
     def __init__(self, path, numPoints, numJoints, numRegions, steps=None, batch_size=32, shuffle=False, fill=5,
                  loadBatches=False, singleview=False, test=False, elevensubs=False, segnet=False, four_channels=False,
                  predicted_regs=False):
-        """Constructor can be expanded,
-           with batch size, dimentation etc.
+        """
+            path - directory of input data
+            numPoints - num of points in point cloud
+            numJoints - num of joints in pose
+
         """
         self.batch_size = batch_size
         self.numPoints = numPoints
@@ -145,7 +148,7 @@ class DataGenerator(Sequence):
                         y = np.load(self.path + 'posesglobalseparatebatches/' + list_IDs_temp + '.npy')
                     if not self.test or self.four_channels:
                         if self.predicted_regs:
-                            regs = np.load(self.path + 'regions_predicted_batches/' + list_IDs_temp + '.npy').reshape(
+                            regs = np.load(self.path + 'region_predicted_batches/' + list_IDs_temp + '.npy').reshape(
                                 (self.batch_size, self.numPoints))
                         else:
                             regs = np.load(self.path + 'regionbatches/' + list_IDs_temp + '.npy').reshape(

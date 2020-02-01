@@ -35,9 +35,10 @@ def CMU_to_npy(seq_name):
 
 def UBC_convert_pcl_files(index=0, start=1, end=60, mode='train', random_subsampling=False):
     global pcls_min, pcls_max
+    pcls_min, pcls_max = np.load('data/UBC/train/pcls_minmax.npy')
     for j in range(start, end):
         if j != 6 or mode == 'valid':
-            x = loadmat('D:/skola/master/datasets/UBC3V/ubc3v-master/exported_clouds_hard_'
+            x = loadmat('D:/skola/master/datasets/UBC3V/ubc3v-master/singleview/exported_clouds_hard_'
                         + mode + str(j) + '.mat')['exported_clouds']
             # y_regions = \
             #     loadmat('D:/skola/master/datasets/UBC3V/ubc3v-master/exported_regions_hard_valid' + str(j) + '.mat')[
@@ -54,13 +55,15 @@ def UBC_convert_pcl_files(index=0, start=1, end=60, mode='train', random_subsamp
 
                 # pose = np.load('data/' + mode + '/pose/' + str(index).zfill(5) + '.npy')
                 # t, pose = subsample(x[i, 0][0], pose, numPoints)
+                t = 2 * (t - pcls_min) / (pcls_max - pcls_min) - 1
                 if not i % 100:
                     print(i, ' pcls processed')
-                np.save('data/' + mode + '/notscaledpcl/' + str(index).zfill(5) + '.npy', t)
+                np.save('data/' + dataset + '/' + mode + '/scaledpclglobalSW/' + str(index).zfill(fill) + '.npy', t)
                 # np.save('data/' + mode + '/pose/' + str(index).zfill(5) + '.npy', pose)
                 # np.save('data/' + mode + '/region_initial/'+ str(index).zfill(5) + '.npy', regions)
                 index += 1
                 # np.save('data/' + mode + '/pcls_minmax.npy', [pcls_min, pcls_max])
+            print("end of " + str(j) + "th file: index " + str(index))
 
 
 def UBC_convert_region_files(index=0, start=1, end=61, mode='train'):
@@ -260,6 +263,7 @@ def make_batch_files(mode='train'):
         num = numTrainSamples
     else:
         num = numTestSamples
+
     indices = np.arange(num)
     indices = shuffle(indices, random_state=128)
     bpcl = np.empty(shape=(batch_size, numPoints, 1, 3))
@@ -282,11 +286,13 @@ def make_batch_files(mode='train'):
         pcl = np.load(
             'data/' + dataset + '/' + mode + '/scaledpclglobal' + name + '/' + str(i).zfill(fill) + '.npy').reshape(
             (numPoints, 1, 3))
+
         pose = np.load(
             'data/' + dataset + '/' + mode + '/posesglobalseparate' + namepose + '/' + str(i).zfill(
                 fill) + '.npy').reshape(
-            numJoints * 3)
-        reg = np.load('data/' + dataset + '/' + mode + '/region' + namepose + '/' + str(i).zfill(fill) + '.npy')
+            numJoints * 3)  # scaling same as multiview
+
+        reg = np.load('data/' + dataset + '/' + mode + '/region' + name + '/' + str(i).zfill(fill) + '.npy')
 
         idx = s % batch_size
         if not idx and s > 0:
@@ -351,68 +357,63 @@ def ITOP_load():
     print('ITOP dataset loaded.')
 
 
-# def load_poses(index=0, mode='train'):
-#     # pose_file = loadmat('D:/skola/master/datasets/UBC3V/ubc3v-master/exported_poses_hard_' + mode + '.mat')['poses'][0]
-#     train_pose_file = loadmat('D:/skola/master/datasets/UBC3V/ubc3v-master/exported_poses_hard_train.mat')['poses'][0]
-#     train_poses = np.asarray([train_pose_file[i][0] for i in range(train_pose_file.shape[0])])
-#     # train_poses = np.reshape(train_poses, (train_poses.shape[0], numJoints * 3))
-#
-#     valid_pose_file = loadmat('D:/skola/master/datasets/UBC3V/ubc3v-master/exported_poses_hard_valid.mat')['poses'][0]
-#     valid_poses = np.asarray([valid_pose_file[i][0] for i in range(valid_pose_file.shape[0])])
-#     # valid_poses = np.reshape(valid_poses, (valid_poses.shape[0], numJoints * 3))
-#
-#     test_pose_file = loadmat('D:/skola/master/datasets/UBC3V/ubc3v-master/exported_poses_hard_test.mat')['poses'][0]
-#     test_poses = np.asarray([test_pose_file[i][0] for i in range(test_pose_file.shape[0])])
-#     # test_poses = np.reshape(test_poses, (test_poses.shape[0], numJoints * 3))
-#
-#     poses = np.concatenate([train_poses, valid_poses, test_poses], axis=0)
-#     print(poses.shape)
-#
-#     for a in range(3):
-#         # scale each axis separately
-#         scaler = MinMaxScaler(feature_range=(-1, 1))
-#         scaler.fit_transform(poses[:, :, a])
-#
-#         train_poses[:, :, a] = scaler.transform(train_poses[:, :, a])
-#         valid_poses[:, :, a] = scaler.transform(valid_poses[:, :, a])
-#         test_poses[:, :, a] = scaler.transform(test_poses[:, :, a])
-#
-#         np.save('data/pose_scaler' + str(a) + '.npy', np.asarray([scaler.min_, scaler.scale_]))
-#
-#     for j in range(index, train_poses.shape[0]):
-#         np.save('data/train/scaledpose/' + str(j).zfill(5) + '.npy', train_poses[j])
-#     for j in range(index, test_poses.shape[0]):
-#         np.save('data/test/scaledpose/' + str(j).zfill(5) + '.npy', test_poses[j])
-#     for j in range(index, valid_poses.shape[0]):
-#         np.save('data/valid/scaledpose/' + str(j).zfill(5) + '.npy', valid_poses[j])
+def load_poses(index=0, mode='train', start=1):
+    [poses_min, poses_max] = np.load('data/UBC/train/poses_minmax.npy')
+
+    if mode == 'train':
+        numsections = 60
+    else:
+        numsections = 20
+    for i in range(start, numsections):
+        if i != 6 or mode == 'valid':
+            train_pose_file = \
+                loadmat('D:/skola/master/datasets/UBC3V/ubc3v-master/singleview/exported_poses_hard_' + mode + str(
+                    i) + '.mat')['poses'][0]
+            train_poses = np.asarray([train_pose_file[i][0] for i in range(train_pose_file.shape[0])])
+            # train_poses = np.reshape(train_poses, (train_poses.shape[0], numJoints * 3))
+
+            for j in range(train_poses.shape[0]):
+                pose = 2 * (train_poses[j] - poses_min) / (poses_max - poses_min) - 1
+                pose = pose.flatten()
+                np.save('data/UBC/' + mode + '/posesglobalseparateSW/' + str(index).zfill(fill) + '.npy', pose)
+                index += 1
 
 
 def scale_poses(mode='train', data='UBC'):
     # global poses_min, poses_max
-    poses_min = [1000000, 1000000, 1000000]
-    poses_max = [-1000000, -1000000, -1000000]
+    # poses_min = [1000000, 1000000, 1000000]
+    # poses_max = [-1000000, -1000000, -1000000]
+    [poses_min, poses_max] = np.load('data/' + data + '/train/poses_minmax.npy')
 
     if data == 'UBC':
+        idx = 0
         poses_file = \
-            loadmat('D:/skola/master/datasets/UBC3V/ubc3v-master/exported_poses_hard_' + mode + '.mat')['poses'][0]
+            loadmat(
+                'G:/skola/master/datasets/UBC3V/exported_clouds_mat/hard-pose/train/pose/exported_poses_hard_' + mode + '.mat')[
+                'poses'][0]
         poses = np.asarray([poses_file[i][0] for i in range(poses_file.shape[0])])
 
-        if mode == 'train':
-            poses_min = np.minimum(poses_min, np.min(poses, axis=(0, 1)))
-            poses_max = np.maximum(poses_max, np.max(poses, axis=(0, 1)))
-            np.save('data/' + data + '/train/poses_minmax.npy', [poses_min, poses_max])
+        # if mode == 'train':
+        #     poses_min = np.minimum(poses_min, np.min(poses, axis=(0, 1)))
+        #     poses_max = np.maximum(poses_max, np.max(poses, axis=(0, 1)))
+        #     np.save('data/' + data + '/train/poses_minmax.npy', [poses_min, poses_max])
+        #
+        # if mode == 'test' or mode == 'valid':
+        #     [poses_min, poses_max] = np.load('data/' + data + '/train/poses_minmax.npy')
 
-        if mode == 'test' or mode == 'valid':
-            [poses_min, poses_max] = np.load('data/' + data + '/train/poses_minmax.npy')
-
-        for i, p in enumerate(poses):
+        for p in poses:
             # if mode == 'test':
             #     np.save('data/' + data + '/test/notscaledpose/' + str(i).zfill(5) + '.npy', p)
             # p[:, 0] = 2 * (p[:, 0] - poses_min[0]) / (poses_max[0] - poses_min[0]) - 1
             # p[:, 1] = 2 * (p[:, 1] - poses_min[1]) / (poses_max[1] - poses_min[1]) - 1
             # p[:, 2] = 2 * (p[:, 2] - poses_min[2]) / (poses_max[2] - poses_min[2]) - 1
             p = 2 * (p - poses_min) / (poses_max - poses_min) - 1
-            np.save('data/' + data + '/' + mode + '/posesglobalseparate/' + str(i).zfill(5) + '.npy', p)
+            np.save('data/' + data + '/' + mode + '/posesglobalseparateSW/' + str(idx).zfill(5) + '.npy', p)
+            idx += 1
+            np.save('data/' + data + '/' + mode + '/posesglobalseparateSW/' + str(idx).zfill(5) + '.npy', p)
+            idx += 1
+            np.save('data/' + data + '/' + mode + '/posesglobalseparateSW/' + str(idx).zfill(5) + '.npy', p)
+            idx += 1
     else:
         # if mode == 'train':
         #     num = numTrainSamples
@@ -477,6 +478,7 @@ def generate_regions(mode='train', data='UBC', start=None, end=None):
     else:
         if data == 'UBC':
             fill = 5
+            [pcls_min, pcls_max] = np.load('data/' + data + '/train/pcls_minmax.npy')
         else:  # MHAD, ITOP, CMU
             fill = 6
         if mode == 'train':
@@ -500,22 +502,26 @@ def generate_regions(mode='train', data='UBC', start=None, end=None):
             # else:
 
             if mode == 'train':
-                pose = np.load('data/' + data + '/' + mode + '/notscaledpose_11subs/' + str(i).zfill(fill) + '.npy')
-                pcl = np.load('data/' + data + '/' + mode + '/notscaledpcl_11subs/' + str(i).zfill(fill) + '.npy')
+                pose = np.load('data/' + data + '/' + mode + '/posesglobalseparateSW/' + str(i).zfill(fill) + '.npy')
+                pcl = np.load('data/' + data + '/' + mode + '/scaledpclglobalSW/' + str(i).zfill(fill) + '.npy')
+                # unscale pcl and pose
+                pcl = (pcl + 1) * (pcls_max - pcls_min) / 2 + pcls_min
+                pose = (pose + 1) * (poses_max - poses_min) / 2 + poses_min
             else:
                 [poses_min, poses_max] = np.load('data/' + data + '/train/poses_minmax_11subs.npy')
-                [pcls, pcls_max] = np.load('data/' + data + '/train/pcls_minmax_11subs.npy')
+                [pcls_min, pcls_max] = np.load('data/' + data + '/train/pcls_minmax_11subs.npy')
                 pose = np.load(
                     'data/' + data + '/' + mode + '/posesglobalseparate_11subs/' + str(i).zfill(fill) + '.npy')
                 pcl = np.load('data/' + data + '/' + mode + '/scaledpclglobal_11subs/' + str(i).zfill(fill) + '.npy')
                 pose = (pose + 1) * (poses_max - poses_min) / 2 + poses_min
                 pcl = (pcl + 1) * (pcls_max - pcls_min) / 2 + pcls_min
+
             regions = automatic_annotation(pose, pcl)
             # visualize_3D(pcl, regions=regions, pose=pose)
             if data == 'MHAD':
                 np.save('data/' + data + '/' + mode + '/region_11subs/' + str(i).zfill(fill) + '.npy', regions)
             else:
-                np.save('data/' + data + '/' + mode + '/region/' + str(i).zfill(fill) + '.npy', regions)
+                np.save('data/' + data + '/' + mode + '/regionSW/' + str(i).zfill(fill) + '.npy', regions)
 
 
 def validtotrain(index=59059):
@@ -768,4 +774,14 @@ if __name__ == "__main__":
     # find_minmax(data='CMU')  # todo zero mean local
     # scale_CMU(mode='test')
 
-    pass
+    UBC_convert_pcl_files(index=54054, start=20, end=60, mode='train', random_subsampling=False)
+    generate_regions(mode='train', data='UBC', start=33033, end=numTrainSamples)
+    # make_batch_files(mode='train')
+    # load_poses(index=45045, start=17, mode='train')  # TODO
+    # TODO check pcl + pose (correct order)
+    # pcl = np.load('data/UBC/train/scaledpclglobalSW/33033.npy', allow_pickle=True)
+    # pose = np.load('data/UBC/train/posesglobalseparateSW/50000.npy', allow_pickle=True)
+    # region = np.load('data/UBC/train/regionSW/33033.npy', allow_pickle=True)
+    # pcl = pcl.reshape(2048, 3)
+    # visualizer.visualize_3D(pcl, pause=False, regions=region, numJoints=numJoints)
+    # pass

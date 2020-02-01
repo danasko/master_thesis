@@ -380,20 +380,23 @@ def real_time_predict(test_x, get_output_func):
 
 def run_segnet(generator, x, mode='test', save=True):
     # Predict regions from segnet and save
-    segnet_model = load_model('data/models/' + dataset + '/20eps_segnet_lr0.001_4residuals_2.blockconvs512.h5')
+    segnet_model = load_model(
+        'data/models/' + dataset + '/10eps_' + (
+            'SV' if singleview else '') + 'segnet_lr0.001_4residuals_2.blockconvs512.h5')
     get_output = Kb.function([segnet_model.layers[0].input, Kb.learning_phase()], [segnet_model.layers[-1].output])
     if mode == 'train' and dataset != 'ITOP' and dataset != 'CMU':
         for b_num in range(numTrainSamples // batch_size):
             pcl_batch = np.load(
-                'data/' + dataset + '/' + mode + '/scaledpclglobalbatches/' + str(b_num + 1).zfill(fill) + '.npy')
+                'data/' + dataset + '/' + mode + '/scaledpclglobal' + ('SW' if singleview else '') + 'batches/' + str(
+                    b_num + 1).zfill(fill) + '.npy')
             # pred = segnet_model.predict(pcl_batch, batch_size=batch_size, steps=None)
             pred = get_output([pcl_batch, 0])[0]
             pred = np.argmax(pred, -1)
             pred = np.expand_dims(pred, -1)
             if save:
                 np.save(
-                    'data/' + dataset + '/' + mode + '/regions_predicted_batches/' + str(b_num + 1).zfill(
-                        fill) + '.npy', pred)
+                    'data/' + dataset + '/' + mode + '/region' + (
+                        'SW' if singleview else '') + '_predicted_batches/' + str(b_num + 1).zfill(fill) + '.npy', pred)
     else:
         if dataset == 'ITOP' or dataset == 'CMU':
             pred1 = segnet_model.predict(x[:x.shape[0] // 2], batch_size=batch_size, verbose=1).argmax(axis=-1).astype(
@@ -408,7 +411,7 @@ def run_segnet(generator, x, mode='test', save=True):
             pred = segnet_model.predict_generator(generator, use_multiprocessing=True, steps=None, workers=workers,
                                                   verbose=1)
         if save:
-            np.save('data/' + dataset + '/' + mode + '/171204_pose6_predicted_regs.npy', pred)
+            np.save('data/' + dataset + '/' + mode + '/predicted_regs.npy', pred)
         return pred
 
 
@@ -569,12 +572,13 @@ if __name__ == "__main__":
     model.compile(optimizer=Adam,
                   loss=lossf, loss_weights=lossw,
                   metrics=metrics)
+
     # metrics=[avg_error_proto])
 
-    # model = load_model(
-    #     'data/models/'+dataset+'/10eps_mymodel_lr0.001_noproto_convs1x1_poolto1_512_256_1residual_globalavgpool_4chan_reg_preds.h5')
+    model = load_model(
+        'data/models/'+dataset+'/10eps_mymodel_lr0.001_noproto_convs1x1_512_256_1residual_nomaxpool_globalavgpool_4chan_reg_preds.h5')
 
-    model = load_model('data/models/' + dataset + '/06eps_SVsegnet_lr0.001_4residuals_2.blockconvs512.h5')
+    # model = load_model('data/models/' + dataset + '/10eps_SVsegnet_lr0.001_4residuals_2.blockconvs512.h5')
 
     # model = load_model('data/models/CMU/20eps_' + name + '.h5')
 
@@ -670,14 +674,13 @@ if __name__ == "__main__":
                                        test=True, elevensubs=(test_method == '11subjects'), segnet=segnet,
                                        four_channels=mymodel, predicted_regs=predicted_regs)
 
-        model.fit_generator(generator=train_generator, epochs=10,
+        model.fit_generator(generator=train_generator, epochs=20,
                             # validation_data=test_generator,
                             # validation_data=(valid_generator if dataset == 'UBC' else test_generator),
                             # TODO remove test generator from validation
-                            callbacks=callbacks_list, initial_epoch=6, use_multiprocessing=True,  # False
+                            callbacks=callbacks_list, initial_epoch=10, use_multiprocessing=True,  # False
                             workers=workers, shuffle=True, max_queue_size=10)  # 20
-        # run_segnet(train_generator, None, 'train', True)
-
+        # run_segnet(test_generator, None, 'test', True)
     # # # # save the model
     # model.save(
     #     'data/models/' + dataset + '/' + name + '.h5') # is saved during checkpoints
@@ -699,7 +702,6 @@ if __name__ == "__main__":
     #
     # TODO run segnet and save predicted regions
     # pred_regs = run_segnet(generator=None, mode='train', save=True)
-
 
     # predictions = np.load('data/MHAD/test/predictions_testmodel_20eps.npy')
     # poses = predictions[0]  # output1

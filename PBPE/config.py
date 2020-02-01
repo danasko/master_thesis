@@ -1,4 +1,4 @@
-dataset = 'MHAD'
+dataset = 'UBC'
 batch_size = 32
 k = 50
 centers = None
@@ -9,8 +9,8 @@ singleview = True
 test_method = 'random25'
 
 # do NOT set both to True at once
-segnet = True
-mymodel = False
+segnet = False
+mymodel = True
 
 assert not segnet or not mymodel
 
@@ -32,11 +32,16 @@ if dataset == 'MHAD':
     numRegions = 29  # 35
     fill = 6
 elif dataset == 'UBC':
-    poolTo1 = True
+    poolTo1 = False
     globalAvg = True
-    numTrainSamples = 59059
-    numValSamples = 19019
-    numTestSamples = 19019
+    if singleview:
+        numTrainSamples = 177177
+        numValSamples = 57057
+        numTestSamples = 57057
+    else:
+        numTrainSamples = 59059
+        numValSamples = 19019
+        numTestSamples = 19019
 
     numJoints = 18
     numRegions = 18
@@ -72,15 +77,16 @@ view = 'SV' if singleview and dataset == 'MHAD' else ''
 if segnet:
     name = view + 'segnet_lr0.001_4residuals_2.blockconvs512'
 elif mymodel:
-    name = view + 'mymodel_lr0.001_noproto_convs1x1_512_256_1residual_' + 'poolto1' if poolTo1 else 'nomaxpool' + '_' \
-                                                                                                    + 'globalavgpool' if globalAvg else '' + '_4chan_reg_preds_onsegnet13eps'
+    name = view + 'mymodel_lr0.001_noproto_convs1x1_512_256_1residual_' + ('poolto1' if poolTo1 else 'nomaxpool') + (
+        '_globalavgpool' if globalAvg else '') + '_4chan_reg_preds'
 else:
     name = view + 'pbpe_new_mae_denserelu_bnsegonly_weights1.01_lrdrop0.8_lr0.0005_3localfeats_woseq6_localzeromean'
     # name = 'pbpe_orig'
 
 # TODO try limited steps with SV
 if singleview:
-    steps = 3000
+    # steps = 3000
+    steps = None
 else:
     steps = None
 
