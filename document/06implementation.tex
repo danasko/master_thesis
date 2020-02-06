@@ -187,7 +187,7 @@ For the sake of achieving as accurate pose estimation as possible, we made a num
 The loss function has been replaced by mean absolute error, as it helped the model to converge faster in our case. The hyperparameters of the model mostly preserve the same values as in the original paper, except for the learning rate and loss weights. Given by our observations, we fine-tuned the weight parameter of the global loss to $w_g=1$, and decreased the weight of the segmentation branch to $w_a = 0.01$. We set the initial learning rate to $5^{-4}$, while reducing it with an exponential decay rate of $d = 0.2$ in each epoch. Again, the differences between the performance with the particular hyper-parameter values might be caused by switching to another deep learning framework. 
 
 
-\section{Four-channel Pose Estimation} % TODO
+\section{Four-Channel Pose Estimation} % TODO
 
 This section is dedicated to the implementation of a novel approach we present as a part of the thesis contribution. The core of the proposed method is a two-stage pipeline, consisting of a body segmentation network and a regression network. The two subsequent stages take a point cloud as an input and produce skeletal joint coordinates as a result.\par
 \vspace{5mm}
@@ -202,8 +202,8 @@ In both networks of the pipeline, the input point clouds are being processed in 
 \vspace{5mm}
 \begin{figure}[H]
 \begin{center}
-  \includegraphics[width=\textwidth]{images/implementation/4chan_pipeline_fixed.png}
-  \caption[The Four-channel Pose Estimation pipeline.]{ The Four-channel Pose Estimation pipeline: First, point clouds are segmented into body regions in the segmentation network (up), then the input point clouds are concatenated with the predicted body regions as a fourth channel, and fed into the regression network (down).}
+  \includegraphics[width=\textwidth]{images/implementation/4chan_pipeline_mine.png}
+  \caption[The Four-Channel Pose Estimation pipeline.]{ The Four-Channel Pose Estimation pipeline: First, point clouds are segmented into body regions in the segmentation network (up), then the input point clouds are concatenated with the predicted per-point body region assignment as a fourth channel, and fed into the regression network (down).}
   \label{fig:4chan_pipeline}
 \end{center}
 \end{figure}
