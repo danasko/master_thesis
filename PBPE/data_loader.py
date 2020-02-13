@@ -579,7 +579,7 @@ def scale(mode='train', data='UBC'):
         if data == 'MHAD':  # shift to zero mean
             pcl = pcl - pcl.mean(axis=0)
 
-        pcl = 2 * (pcl - pcls_min) / (pcls_max - pcls_min) - 1 
+        pcl = 2 * (pcl - pcls_min) / (pcls_max - pcls_min) - 1
 
         np.save('data/' + data + '/' + mode + '/scaledpclglobal' + dir + str(i).zfill(fill) + '.npy', pcl)
 
@@ -797,4 +797,5 @@ if __name__ == "__main__":
     # generate_regions(mode='test', data=dataset)
     scale_poses(mode='train', data=dataset)
     scale_poses(mode='test', data=dataset)
+    # todo make batches
     # pass

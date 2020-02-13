@@ -4,6 +4,7 @@ import tensorflow as tf
 import os
 from visualizer import *
 from sklearn.utils import shuffle
+from config import leaveout
 from sklearn.preprocessing import MinMaxScaler
 
 
@@ -46,11 +47,16 @@ class DataGenerator(Sequence):
                 self.list_IDs = [str(i + 1).zfill(fill) for i in
                                  range(len(os.listdir(path + 'scaledpclglobalSWbatches/')))]
             elif numJoints == 35:
-                self.list_IDs = [str(i + 1).zfill(fill) for i in
-                                 range(len(os.listdir(path + 'scaledpclglobal35jbatches/')))]
+                if elevensubs:
+                    self.list_IDs = [str(i + 1).zfill(fill) for i in
+                                     range(len(os.listdir(
+                                         path + 'scaledpclglobal_11subs' + str(leaveout) + 'batches/')))]
+                else:
+                    self.list_IDs = [str(i + 1).zfill(fill) for i in
+                                     range(len(os.listdir(path + 'scaledpclglobal35jbatches/')))]
             elif elevensubs:
                 self.list_IDs = [str(i + 1).zfill(fill) for i in
-                                 range(len(os.listdir(path + 'scaledpclglobal_11subsbatches/')))]
+                                 range(len(os.listdir(path + 'scaledpclglobal_11subs' + str(leaveout) + 'batches/')))]
             else:
                 self.list_IDs = [str(i + 1).zfill(fill) for i in
                                  range(len(os.listdir(path + 'scaledpclglobalbatches/')))]
@@ -60,7 +66,7 @@ class DataGenerator(Sequence):
                                  range(len(os.listdir(path + 'scaledpclglobalSW/')))]
             elif elevensubs:
                 self.list_IDs = [str(i).zfill(fill) for i in
-                                 range(len(os.listdir(path + 'scaledpclglobal_11subs/')))]
+                                 range(len(os.listdir(path + 'scaledpclglobal_11subs' + str(leaveout) + '/')))]
                 if predicted_regs:
                     self.list_IDs = self.list_IDs[:-(len(self.list_IDs) % 32) - 1]
             else:
@@ -125,27 +131,49 @@ class DataGenerator(Sequence):
                 # X = np.load(self.path + 'scaledpclglobalbatches/' + list_IDs_temp + '.npy')
 
                 if self.numJoints == 35:
-                    X = np.load(self.path + 'scaledpclglobal35jbatches/' + list_IDs_temp + '.npy')
-                    if not self.segnet:
-                        y = np.load(self.path + 'posesglobalseparate35jbatches/' + list_IDs_temp + '.npy')
-                    if not self.test or self.four_channels:
-                        if self.predicted_regs:
-                            regs = np.load(self.path + 'region35j_predicted_batches/' + list_IDs_temp + '.npy').reshape(
-                                (self.batch_size, self.numPoints))
-                        else:
-                            regs = np.load(self.path + 'region35jbatches/' + list_IDs_temp + '.npy').reshape(
-                                (self.batch_size, self.numPoints))
+                    if self.elevensubs:
+                        X = np.load(
+                            self.path + 'scaledpclglobal_11subs' + str(leaveout) + 'batches/' + list_IDs_temp + '.npy')
+                        if not self.segnet:
+                            y = np.load(self.path + 'posesglobalseparate35j_11subs' + str(
+                                leaveout) + 'batches/' + list_IDs_temp + '.npy')
+                        if not self.test or self.four_channels:
+                            if self.predicted_regs:
+                                regs = np.load(
+                                    self.path + 'region35j_11subs' + str(
+                                        leaveout) + '_predicted_batches/' + list_IDs_temp + '.npy').reshape(
+                                    (self.batch_size, self.numPoints))
+                            else:
+                                regs = np.load(self.path + 'region35j_11subs' + str(
+                                    leaveout) + 'batches/' + list_IDs_temp + '.npy').reshape(
+                                    (self.batch_size, self.numPoints))
+                    else:
+                        X = np.load(self.path + 'scaledpclglobal35jbatches/' + list_IDs_temp + '.npy')
+                        if not self.segnet:
+                            y = np.load(self.path + 'posesglobalseparate35jbatches/' + list_IDs_temp + '.npy')
+                        if not self.test or self.four_channels:
+                            if self.predicted_regs:
+                                regs = np.load(
+                                    self.path + 'region35j_predicted_batches/' + list_IDs_temp + '.npy').reshape(
+                                    (self.batch_size, self.numPoints))
+                            else:
+                                regs = np.load(self.path + 'region35jbatches/' + list_IDs_temp + '.npy').reshape(
+                                    (self.batch_size, self.numPoints))
                 elif self.elevensubs:
-                    X = np.load(self.path + 'scaledpclglobal_11subsbatches/' + list_IDs_temp + '.npy')
+                    X = np.load(self.path + 'scaledpclglobal_11subs' + str(
+                                    leaveout) + 'batches/' + list_IDs_temp + '.npy')
                     if not self.segnet:
-                        y = np.load(self.path + 'posesglobalseparate_11subsbatches/' + list_IDs_temp + '.npy')
+                        y = np.load(self.path + 'posesglobalseparate_11subs' + str(
+                                    leaveout) + 'batches/' + list_IDs_temp + '.npy')
                     if not self.test or self.four_channels:
                         if self.predicted_regs:
                             regs = np.load(
-                                self.path + 'region_11subs_predicted_batches/' + list_IDs_temp + '.npy').reshape(
+                                self.path + 'region_11subs' + str(
+                                    leaveout) + '_predicted_batches/' + list_IDs_temp + '.npy').reshape(
                                 (self.batch_size, self.numPoints))
                         else:
-                            regs = np.load(self.path + 'region_11subsbatches/' + list_IDs_temp + '.npy').reshape(
+                            regs = np.load(self.path + 'region_11subs' + str(
+                                    leaveout) + 'batches/' + list_IDs_temp + '.npy').reshape(
                                 (self.batch_size, self.numPoints))
                 else:
                     X = np.load(self.path + 'scaledpclglobalbatches/' + list_IDs_temp + '.npy')
@@ -180,8 +208,12 @@ class DataGenerator(Sequence):
                 return X, {'output1': y, 'output2': y_regions}
         else:  # no batches saved ==> valid or test set
             if self.numJoints == 35:
-                name = '35j'
-                pclname = ''
+                if self.elevensubs:
+                    name = '35j_11subs' + str(leaveout)
+                    pclname = '_11subs' + str(leaveout)
+                else:
+                    name = '35j'
+                    pclname = ''
             elif self.elevensubs:
                 name = '_11subs'
                 pclname = '_11subs'

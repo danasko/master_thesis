@@ -6,8 +6,8 @@ thresh = 10  # in cm
 numPoints = 2048  # number of points in each pcl
 singleview = True
 test_method = '11subjects'
-leaveout = 12
 # test_method = 'random25'
+leaveout = 12
 
 # do NOT set both to True at once
 segnet = True
