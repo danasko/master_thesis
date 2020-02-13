@@ -380,14 +380,16 @@ def real_time_predict(test_x, get_output_func):
 
 def run_segnet(generator, x, mode='test', save=True):
     # Predict regions from segnet and save
+    subs = ('_11subs' if test_method == '11subjects' else ('35j' if numJoints == 35 else ''))
     segnet_model = load_model(
-        'data/models/' + dataset + '/10eps_' + (
+        'data/models/' + dataset + '/10eps_' + subs + (
             'SV' if singleview else '') + 'segnet_lr0.001_4residuals_2.blockconvs512.h5')
     get_output = Kb.function([segnet_model.layers[0].input, Kb.learning_phase()], [segnet_model.layers[-1].output])
     if mode == 'train' and dataset != 'ITOP' and dataset != 'CMU':
         for b_num in range(numTrainSamples // batch_size):
             pcl_batch = np.load(
-                'data/' + dataset + '/' + mode + '/scaledpclglobal' + ('SW' if singleview else '') + 'batches/' + str(
+                'data/' + dataset + '/' + mode + '/scaledpclglobal' + subs + (
+                    'SW' if singleview else '') + 'batches/' + str(
                     b_num + 1).zfill(fill) + '.npy')
             # pred = segnet_model.predict(pcl_batch, batch_size=batch_size, steps=None)
             pred = get_output([pcl_batch, 0])[0]
@@ -395,7 +397,7 @@ def run_segnet(generator, x, mode='test', save=True):
             pred = np.expand_dims(pred, -1)
             if save:
                 np.save(
-                    'data/' + dataset + '/' + mode + '/region' + (
+                    'data/' + dataset + '/' + mode + '/region' + subs + (
                         'SW' if singleview else '') + '_predicted_batches/' + str(b_num + 1).zfill(fill) + '.npy', pred)
     else:
         if dataset == 'ITOP' or dataset == 'CMU':
@@ -410,8 +412,10 @@ def run_segnet(generator, x, mode='test', save=True):
         else:
             pred = segnet_model.predict_generator(generator, use_multiprocessing=True, steps=None, workers=workers,
                                                   verbose=1)
+            pred = np.argmax(pred, axis=-1).astype(np.int)
+            pred = np.expand_dims(pred, -1)
         if save:
-            np.save('data/' + dataset + '/' + mode + '/predicted_regs.npy', pred)
+            np.save('data/' + dataset + '/' + mode + '/predicted_regs' + subs + '.npy', pred)
         return pred
 
 
@@ -420,7 +424,9 @@ def step_decay(epoch):
     # if dataset == 'ITOP':
     #     initial_lrate = 0.0005
     # else:
-    if segnet or mymodel:
+    if mymodel and dataset == 'ITOP':
+        initial_lrate = 0.0007
+    elif segnet or mymodel:
         initial_lrate = 0.001
     else:
         initial_lrate = 0.0005  # 4chan 0.001 PBPE 0.0005
@@ -574,11 +580,15 @@ if __name__ == "__main__":
                   metrics=metrics)
 
     # metrics=[avg_error_proto])
-
+    #
     model = load_model(
-        'data/models/'+dataset+'/10eps_mymodel_lr0.001_noproto_convs1x1_512_256_1residual_nomaxpool_globalavgpool_4chan_reg_preds.h5')
+        'data/models/' + dataset + '/10eps_35j' + view + 'mymodel_lr0.001_noproto_convs1x1_512_256_1residual_' + (
+            'poolto1' if poolTo1 else 'nomaxpool') + ('_globalavgpool' if globalAvg else '') + '_4chan_reg_preds.h5')
 
-    # model = load_model('data/models/' + dataset + '/10eps_SVsegnet_lr0.001_4residuals_2.blockconvs512.h5')
+    # TODO test this model on test predicted regs (trained on GT train regs)
+    # model = load_model('10eps_mymodel_lr0.001_noproto_convs1x1_poolto1_512_256_1residual_globalavgpool_4chan.h5')
+
+    # model = load_model('data/models/' + dataset + '/08eps_35jsegnet_lr0.001_4residuals_2.blockconvs512.h5')
 
     # model = load_model('data/models/CMU/20eps_' + name + '.h5')
 
@@ -591,7 +601,7 @@ if __name__ == "__main__":
         test_pred_regs = np.load('data/ITOP/test/predicted_regs.npy')
         test_x_exp = np.concatenate([test_x, test_pred_regs], axis=-1)
         train_x_exp = np.concatenate([train_x, pred_regs], axis=-1)
-        model.fit(train_x_exp, train_y, batch_size=batch_size, epochs=10, callbacks=callbacks_list,
+        model.fit(train_x_exp, train_y, batch_size=batch_size, epochs=20, callbacks=callbacks_list,
                   # validation_split=0.1
                   validation_data=(test_x_exp, test_y),
                   shuffle=True, initial_epoch=0)
@@ -620,7 +630,7 @@ if __name__ == "__main__":
             model.fit(x_train, y_train, batch_size=batch_size,
                       epochs=20,
                       callbacks=callbacks_list,
-                      validation_split=0.2, shuffle=True, initial_epoch=10)  # 0.2
+                      validation_split=0.2, shuffle=True, initial_epoch=0)  # 0.2
             # pass
         else:  # PBPE
             model.fit(x_train, {'output1': y_train, 'output2': regs_train}, batch_size=batch_size,
@@ -662,25 +672,25 @@ if __name__ == "__main__":
                                         elevensubs=(test_method == '11subjects'), segnet=segnet, four_channels=mymodel,
                                         predicted_regs=predicted_regs)
         if dataset == 'UBC':
-            valid_generator = DataGenerator('data/' + dataset + '/valid/', numPoints, numJoints, numRegions,
-                                            steps=steps,
-                                            batch_size=batch_size, fill=fill, singleview=singleview,
-                                            shuffle=False, segnet=segnet, four_channels=mymodel)
-        # test_generator = DataGenerator('data/' + dataset + '/test/', numPoints, numJoints, numRegions, steps=None,
-        #                                batch_size=batch_size, shuffle=False, fill=6, singleview=singleview)
+            if not singleview:
+                valid_generator = DataGenerator('data/' + dataset + '/valid/', numPoints, numJoints, numRegions,
+                                                steps=steps,
+                                                batch_size=batch_size, fill=fill, singleview=singleview,
+                                                shuffle=False, segnet=segnet, four_channels=mymodel)
 
         test_generator = DataGenerator('data/' + dataset + '/test/', numPoints, numJoints, numRegions, steps=steps,
                                        batch_size=batch_size, shuffle=False, fill=fill, singleview=singleview,
                                        test=True, elevensubs=(test_method == '11subjects'), segnet=segnet,
                                        four_channels=mymodel, predicted_regs=predicted_regs)
 
-        model.fit_generator(generator=train_generator, epochs=20,
-                            # validation_data=test_generator,
-                            # validation_data=(valid_generator if dataset == 'UBC' else test_generator),
-                            # TODO remove test generator from validation
-                            callbacks=callbacks_list, initial_epoch=10, use_multiprocessing=True,  # False
-                            workers=workers, shuffle=True, max_queue_size=10)  # 20
+        # model.fit_generator(generator=train_generator, epochs=10,
+        #                     # validation_data=test_generator,
+        #                     # validation_data=(valid_generator if dataset == 'UBC' else test_generator),
+        #                     # TODO remove test generator from validation
+        #                     callbacks=callbacks_list, initial_epoch=0, use_multiprocessing=True,  # False
+        #                     workers=workers, shuffle=True, max_queue_size=10)  # 20
         # run_segnet(test_generator, None, 'test', True)
+
     # # # # save the model
     # model.save(
     #     'data/models/' + dataset + '/' + name + '.h5') # is saved during checkpoints
@@ -688,9 +698,9 @@ if __name__ == "__main__":
     # test_model.save('data/models/' + dataset + '/test_models/' + name + '.h5')
 
     # Evaluate model (only regression branch)
-    #
-    # eval_metrics = model.evaluate_generator(
-    #     test_generator, use_multiprocessing=True, workers=workers, max_queue_size=10, verbose=1, steps=None)
+
+    eval_metrics = model.evaluate_generator(test_generator, verbose=1, steps=None, use_multiprocessing=True,
+                                                 workers=workers)
 
     # TODO wrap these into separate functions
     # Evaluate model (both branches)

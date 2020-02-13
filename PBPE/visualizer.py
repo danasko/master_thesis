@@ -29,7 +29,7 @@ def save_frames(predictions, data, gt_dir, pcls_min=None, pcls_max=None, numJoin
         pcls_gt = data_loader.unscale_to_cm(pcls_gt, data='CMU')
         predictions = data_loader.unscale_to_cm(predictions, data='CMU')
         for i in num:
-            visualize_3D(pcls_gt[i], pose=predictions[i], numJoints=numJoints, title='', noaxes=noaxes, save_fig=True,
+            visualize_3D(pcls_gt[i], pose=predictions[i], title='', noaxes=noaxes, save_fig=True,
                          name=str(i).zfill(6), azim=azim_min + (azim * (i + 1)), elev=elev, gt=gt, pause=False)
     else:
         for i in num:
@@ -51,11 +51,11 @@ def save_frames(predictions, data, gt_dir, pcls_min=None, pcls_max=None, numJoin
 
             pose_pred += pose_mean
 
-            visualize_3D(pcl_gt, pose=pose_pred, numJoints=numJoints, title='', noaxes=noaxes, save_fig=True,
+            visualize_3D(pcl_gt, pose=pose_pred, title='', noaxes=noaxes, save_fig=True,
                          name=str(i).zfill(6), azim=azim_min + (azim * (i + 1)), elev=elev, gt=gt, pause=False)
 
 
-def visualize_3D(coords, pause=True, array=False, regions=None, pose=None, numJoints=18,
+def visualize_3D(coords, pause=True, array=False, regions=None, pose=None,
                  title='Visualized pointcloud', ms1=10, ms2=0.03, noaxes=False, azim=-77, elev=12., save_fig=False,
                  name='samplefig', gt=False):  # coords with shape (numPoints, 3)
     fig = plt.figure()
@@ -68,30 +68,34 @@ def visualize_3D(coords, pause=True, array=False, regions=None, pose=None, numJo
         # z = coords[:, :, 2]
         coords = np.reshape(coords, (coords.shape[0], 3))
         # else:
-    x = coords[:, 0]
-    y = coords[:, 1]
-    z = coords[:, 2]
+    if coords is not None:
+        x = coords[:, 0]
+        y = coords[:, 1]
+        z = coords[:, 2]
     if gt:
         color = 'green'
     else:
-        color = 'magenta'
+        # color = 'magenta'
+        color = 'darkgrey'
 
     if pose is not None:
-        pose = np.reshape(pose, (numJoints, 3))
-        ax.scatter(pose[:, 0], pose[:, 2], pose[:, 1], c=color, marker='o', s=ms1)
+        pose = np.reshape(pose, (config.numJoints, 3))
+        ax.scatter(pose[:, 0], pose[:, 2], pose[:, 1], c='blue', marker='o', s=ms1)
     if regions is not None:
-
-        C = np.stack([regions] * 3,
-                     axis=-1)  # shape = (numPoints, 1)  (number of corresponding joint representing the region)
-        C = np.reshape(C, (regions.shape[0], 3))
+        # C = np.stack([regions] * 3,
+        #              axis=-1)  # shape = (numPoints, 1)  (number of corresponding joint representing the region)
+        # C = np.reshape(C, (regions.shape[0], 3))
+        C = np.zeros((regions.shape[0], 3))
         for j in range(config.numRegions):
             #     C[C == [j, j, j]] = (j * 7)
             color = np.random.randint(256, size=3)
-            for a in range(C.shape[0]):
-                if np.array_equal(C[a], [j, j, j]):
-                    C[a] = color
+            for reg in range(regions.shape[0]):
+                # if np.array_equal(C[a], [j, j, j]):
+                if regions[reg] == j:
+                    # C[a] = color
+                    C[reg] = color
         ax.scatter(x, z, y, c=C / 255.0, marker='o', s=3)
-    else:
+    elif coords is not None:
         ax.scatter(x, z, y, c='blue', marker='o', s=ms2)
     ax.set_xlabel('x axis')
     ax.set_ylabel('z axis')
@@ -100,35 +104,48 @@ def visualize_3D(coords, pause=True, array=False, regions=None, pose=None, numJo
         plt.axis('off')
 
     # Fix aspect ratio
-    max_range = np.array([x.max() - x.min(), y.max() - y.min(),
-                          z.max() - z.min()]).max() / 2.0
-    mean_x = x.mean()
-    mean_z = y.mean()
-    mean_y = z.mean()
-    ax.set_xlim(mean_x - max_range, mean_x + max_range)
-    ax.set_ylim(mean_y + max_range, mean_y - max_range)
-    ax.set_zlim(mean_z - max_range, mean_z + max_range)
+    if coords is not None:
+        max_range = np.array([x.max() - x.min(), y.max() - y.min(),
+                              z.max() - z.min()]).max() / 2.0
+        mean_x = x.mean()
+        mean_z = y.mean()
+        mean_y = z.mean()
+        ax.set_xlim(mean_x - max_range, mean_x + max_range)
+        ax.set_ylim(mean_y + max_range, mean_y - max_range)
+        ax.set_zlim(mean_z - max_range, mean_z + max_range)
+    elif pose is not None:
+        x = pose[:, 0]
+        y = pose[:, 1]
+        z = pose[:, 2]
+        max_range = np.array([x.max() - x.min(), y.max() - y.min(),
+                              z.max() - z.min()]).max() / 2.0
+        mean_x = x.mean()
+        mean_z = y.mean()
+        mean_y = z.mean()
+        ax.set_xlim(mean_x - max_range, mean_x + max_range)
+        ax.set_ylim(mean_y + max_range, mean_y - max_range)
+        ax.set_zlim(mean_z - max_range, mean_z + max_range)
     # ax.invert_yaxis()
-
-    if pose.shape[0] == 18:  # UBC dataset
-        for bone in UBC_bone_list:
-            ax.plot([pose[:, 0][bone[0]], pose[:, 0][bone[1]]],
-                    [pose[:, 2][bone[0]], pose[:, 2][bone[1]]], [pose[:, 1][bone[0]], pose[:, 1][bone[1]]], color)
-    elif pose.shape[0] == 29:  # MHAD
-        for bone in MHAD_bone_list:
-            ax.plot([pose[:, 0][bone[0]], pose[:, 0][bone[1]]],
-                    [pose[:, 2][bone[0]], pose[:, 2][bone[1]]], [pose[:, 1][bone[0]], pose[:, 1][bone[1]]], color)
-    elif config.dataset == 'CMU':
-        for bone in CMU_bone_list:
-            ax.plot([pose[:, 0][bone[0]], pose[:, 0][bone[1]]],
-                    [pose[:, 2][bone[0]], pose[:, 2][bone[1]]], [pose[:, 1][bone[0]], pose[:, 1][bone[1]]], color)
+    if pose is not None:
+        if pose.shape[0] == 18:  # UBC dataset
+            for bone in UBC_bone_list:
+                ax.plot([pose[:, 0][bone[0]], pose[:, 0][bone[1]]],
+                        [pose[:, 2][bone[0]], pose[:, 2][bone[1]]], [pose[:, 1][bone[0]], pose[:, 1][bone[1]]], color)
+        elif pose.shape[0] == 29:  # MHAD
+            for bone in MHAD_bone_list:
+                ax.plot([pose[:, 0][bone[0]], pose[:, 0][bone[1]]],
+                        [pose[:, 2][bone[0]], pose[:, 2][bone[1]]], [pose[:, 1][bone[0]], pose[:, 1][bone[1]]], color)
+        elif config.dataset == 'CMU':
+            for bone in CMU_bone_list:
+                ax.plot([pose[:, 0][bone[0]], pose[:, 0][bone[1]]],
+                        [pose[:, 2][bone[0]], pose[:, 2][bone[1]]], [pose[:, 1][bone[0]], pose[:, 1][bone[1]]], color)
 
     # plt.xlim(-100, 100)
     # ax.set_zlim3d(-100, 100)
     # plt.ylim(-100, 100)
     if save_fig:
         ax.view_init(elev=elev, azim=azim)
-        plt.savefig('data/' + config.dataset + '/test/figures/' + name + '.png', dpi=300)
+        plt.savefig('data/' + config.dataset + '/test/figures/' + name + '.png', dpi=1200)
         plt.close(fig)
     else:
         plt.show()
@@ -137,14 +154,14 @@ def visualize_3D(coords, pause=True, array=False, regions=None, pose=None, numJo
             input("Press [enter] to show next pcl.")
 
 
-def visualize_3D_pose(pose, pause=True, numJoints=18,
+def visualize_3D_pose(pose, pause=True,
                       title='Visualized pose', noaxes=False, color='green'):  # coords with shape (numPoints, 3)
     fig = plt.figure()
     plt.title(title)
     ax = fig.add_subplot(111, projection='3d')
     ax.text2D(0.05, 0.95, title, transform=ax.transAxes)
     if pose is not None:
-        pose = np.reshape(pose, (numJoints, 3))
+        pose = np.reshape(pose, (config.numJoints, 3))
         ax.scatter(pose[:, 0], pose[:, 2], pose[:, 1], c=color, marker='o')
 
     ax.set_xlabel('x axis')
@@ -197,12 +214,15 @@ if __name__ == "__main__":
     # pcl = np.load('data/CMU/train/scaled_pcls.npy', allow_pickle=True)[idx]  # todo check from 98162 to end (val split)
     # pose = np.load('data/CMU/train/scaled_poses.npy', allow_pickle=True)[idx]
     # regions = np.load('data/CMU/train/regions/')
-    preds = np.load('data/CMU/test/171204_pose6_predictions.npy', allow_pickle=True)
-    poses_gt = np.load('data/CMU/test/171204_pose6_scaledposes_lzeromean.npy', allow_pickle=True)
-    gt_dir = 'data/CMU/test/171204_pose6_scaledpcls_lzeromean.npy'
-    save_frames(preds, 'CMU', gt_dir, numJoints=15, noaxes=True, gt=False, num=range(9250, 9630)) #7100
-    # pcls = np.load('data/CMU/test/171204_pose6_scaledpcls_lzeromean.npy', allow_pickle=True)
-    # poses = data_loader.unscale_to_cm(poses, data='CMU')
-    # pcls = data_loader.unscale_to_cm(pcls, data='CMU')
-    # for p in range(8000, 8001):  # range(poses.shape[0])
-    #     visualize_3D(pcls[p], pose=poses[p], regions=None, numJoints=15, pause=True)
+
+    # preds = np.load('data/CMU/test/171204_pose6_predictions.npy', allow_pickle=True)
+    # poses_gt = np.load('data/CMU/test/171204_pose6_scaledposes_lzeromean.npy', allow_pickle=True)
+    # gt_dir = 'data/CMU/test/171204_pose6_scaledpcls_lzeromean.npy'
+    # save_frames(preds, 'CMU', gt_dir, numJoints=15, noaxes=True, gt=False, num=range(9250, 9630))  # 7100
+    # pcl = np.load('data/UBC/train/scaledpclglobal/00002.npy').reshape((2048, 3))
+    # reg = np.load('data/UBC/train/region/00002.npy')
+    #pose = np.load('data/UBC/train/posesglobalseparate/00002.npy')
+    pcl = np.load('data/MHAD/train/scaledpclglobalSWbatches/000022.npy')[0]
+    pcl = pcl.reshape((2048,3))
+    reg = np.load('data/MHAD/train/region35jbatches/000022.npy')[0]
+    visualize_3D(coords=pcl, regions=reg, ms2=1, azim=-32, elev=11, title='')

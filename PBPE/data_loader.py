@@ -5,11 +5,6 @@ from config import *
 from ITOP_data_loader import DataLoader
 from sklearn.utils import shuffle
 
-CMU_split_indices = []
-
-
-# CMU_numsamples = 153378‬ (pose1,2,3)
-
 
 def CMU_to_npy(seq_name):
     path = 'G:\\skola\\master\\datasets\\CMU-Panoptic\\panoptic-toolbox\\' + seq_name
@@ -100,14 +95,14 @@ def UBC_convert_region_files(index=0, start=1, end=61, mode='train'):
                 index += 1
 
 
-def MHAD_loadpcls(index=0, start=1, end=13, mode='train', singleview=False):
+def MHAD_loadpcls(index=0, start=1, end=13, mode='train', singleview=False, leaveout=13):
     if mode == 'train':
         pass
         # pcls_min = [1000000, 1000000, 1000000]
         # pcls_max = [-1000000, -1000000, -1000000]
     else:
         if test_method == '11subjects':
-            [pcls_min, pcls_max] = np.load('data/MHAD/train/pcls_minmax_11subs.npy')
+            [pcls_min, pcls_max] = np.load('data/MHAD/train/pcls_minmax_11subs' + str(leaveout) + '.npy')
         elif singleview:
             [pcls_min, pcls_max] = np.load('data/MHAD/train/pcls_minmaxSW.npy')
         else:
@@ -124,113 +119,124 @@ def MHAD_loadpcls(index=0, start=1, end=13, mode='train', singleview=False):
         dir = 'pcl_singleview'
         name = 'SW/'
     elif test_method == '11subjects':
-        dir = 'pcl'
-        name = '_11subs/'
+        if numJoints == 35:
+            dir = 'pcl'
+            name = '35j_11subs' + str(leaveout) + '/'
+        else:
+            dir = 'pcl'
+            name = '_11subs' + str(leaveout) + '/'
     else:
         dir = 'pcl'
         name = '/'
 
-    for r in range(1, 6):
-        for j in range(start, end):
-            print('Subject ' + str(j) + ' Rep. ' + str(r))
-            # if r == 1 and j == 1:
-            #     file = h5py.File('G:/skola/master/datasets/MHAD/exported/pcl/S' + str(j).zfill(
-            #         2) + 'R' + str(r).zfill(2) + '.mat', 'r')
-            #     x = file.get('clouds').value
-            # else:
-
-            try:
-                x = loadmat(
-                    'G:/skola/master/datasets/MHAD/exported/' + dir + '/S' + str(j).zfill(
-                        2) + 'R' + str(r).zfill(2) + '.mat')['clouds'][0]
-            except KeyError:
-                x = loadmat(
-                    'G:/skola/master/datasets/MHAD/exported/' + dir + '/S' + str(j).zfill(
-                        2) + 'R' + str(r).zfill(2) + '.mat')['s'][0]
-            # xx = np.asarray([np.asarray(file[xi[0]]).T for xi in x])
-            # print(xx.shape)
-            # allp = np.concatenate([allp, xx], axis=0)
-
-            for i in range(x.shape[0]):  # x.shape[0]
-                # TODO scale to -1,1 - and save as scaledglobal
-                # if j == 1:
-                #     pcl = np.array(file[x[i][0]]).T  # x[i]
+    for r in range(1, 6):  # 5 repetitions
+        for j in range(start, end):  # subjects
+            if mode == 'train':
+                cond = j != leaveout
+            else:
+                cond = j == leaveout
+            if cond:
+                print('Subject ' + str(j) + ' Rep. ' + str(r))
+                # if r == 1 and j == 1:
+                #     file = h5py.File('G:/skola/master/datasets/MHAD/exported/pcl/S' + str(j).zfill(
+                #         2) + 'R' + str(r).zfill(2) + '.mat', 'r')
+                #     x = file.get('clouds').value
                 # else:
-                pcl = x[i]
-                # print(pcl.shape)
-                if mode == 'train':
+
+                try:
+                    x = loadmat(
+                        'G:/skola/master/datasets/MHAD/exported/' + dir + '/S' + str(j).zfill(
+                            2) + 'R' + str(r).zfill(2) + '.mat')['clouds'][0]
+                except KeyError:
+                    x = loadmat(
+                        'G:/skola/master/datasets/MHAD/exported/' + dir + '/S' + str(j).zfill(
+                            2) + 'R' + str(r).zfill(2) + '.mat')['s'][0]
+                # xx = np.asarray([np.asarray(file[xi[0]]).T for xi in x])
+                # print(xx.shape)
+                # allp = np.concatenate([allp, xx], axis=0)
+
+                for i in range(x.shape[0]):  # x.shape[0]
+                    # TODO scale to -1,1 - and save as scaledglobal
+                    # if j == 1:
+                    #     pcl = np.array(file[x[i][0]]).T  # x[i]
+                    # else:
+                    pcl = x[i]
+                    # print(pcl.shape)
+                    # if mode == 'train':
+                    #     np.save('data/MHAD/' + mode + '/notscaledpcl' + name + str(index).zfill(6) + '.npy', pcl)
+                    #     # pcl = pcl - pcl.mean(axis=0)
+                    #     # pcls_min = np.minimum(pcls_min, np.min(pcl, axis=0))
+                    #     # pcls_max = np.maximum(pcls_max, np.max(pcl, axis=0))
+                    #
+                    # else:
+                    #     # pcl = pcl - pcl.mean(axis=0)
+                    #     # pcl = 2 * (pcl - pcls_min) / (pcls_max - pcls_min) - 1
+                    #     # np.save('data/MHAD/test/scaledpclglobal' + name + str(index).zfill(6) + '.npy', pcl)
                     np.save('data/MHAD/' + mode + '/notscaledpcl' + name + str(index).zfill(6) + '.npy', pcl)
-                    # pcl = pcl - pcl.mean(axis=0)
-                    # pcls_min = np.minimum(pcls_min, np.min(pcl, axis=0))
-                    # pcls_max = np.maximum(pcls_max, np.max(pcl, axis=0))
+                    # visualize_3D(pcl)
 
-                else:
-                    # pcl = pcl - pcl.mean(axis=0)
-                    # pcl = 2 * (pcl - pcls_min) / (pcls_max - pcls_min) - 1
-                    # np.save('data/MHAD/test/scaledpclglobal' + name + str(index).zfill(6) + '.npy', pcl)
-                    np.save('data/MHAD/test/notscaledpcl' + name + str(index).zfill(6) + '.npy', pcl)
-                # visualize_3D(pcl)
-
-                index += 1
+                    index += 1
 
             # if mode == 'train':
             #     np.save('data/MHAD/train/pcls_minmax.npy', [pcls_min, pcls_max])
     return index
 
 
-def MHAD_load_poses(index=0, start=1, end=13, mode='train', sameaspcls=False, repetitions=(1, 6), singleview=False):
-    if mode == 'train':
-        poses_min = [1000000, 1000000, 1000000]
-        poses_max = [-1000000, -1000000, -1000000]
-
-    elif sameaspcls:
-        [poses_min, poses_max] = np.load('data/MHAD/train/pcls_minmax.npy')
-    elif test_method == '11subjects':
-        [poses_min, poses_max] = np.load('data/MHAD/train/poses_minmax_11subs.npy')
-    elif singleview:
-        [poses_min, poses_max] = np.load('data/MHAD/train/poses_minmaxSW.npy')
-    else:
-        [poses_min, poses_max] = np.load('data/MHAD/train/poses_minmax.npy')
+def MHAD_load_poses(index=0, start=1, end=13, mode='train', sameaspcls=False, repetitions=(1, 6), singleview=False,
+                    leaveout=13):
+    # if mode == 'train':
+    #     poses_min = [1000000, 1000000, 1000000]
+    #     poses_max = [-1000000, -1000000, -1000000]
+    #
+    # elif sameaspcls:
+    #     [poses_min, poses_max] = np.load('data/MHAD/train/pcls_minmax.npy')
+    # elif test_method == '11subjects':
+    #     [poses_min, poses_max] = np.load('data/MHAD/train/poses_minmax_11subs.npy')
+    # elif singleview:
+    #     [poses_min, poses_max] = np.load('data/MHAD/train/poses_minmaxSW.npy')
+    # else:
+    #     [poses_min, poses_max] = np.load('data/MHAD/train/poses_minmax.npy')
 
     if singleview:
         dir = 'pose_singleview'
         name = 'SW/'
     elif test_method == '11subjects':
-        dir = 'pose'
-        name = '_11subs/'
+        if numJoints == 35:
+            dir = 'pose_35j'
+            name = '35j_11subs' + str(leaveout) + '/'
+        else:
+            dir = 'pose'
+            name = '_11subs' + str(leaveout) + '/'
     else:
         dir = 'pose'
         name = '/'
 
     for r in range(repetitions[0], repetitions[1]):
         for i in range(start, end):
-            y = loadmat(
-                'G:/skola/master/datasets/MHAD/exported/' + dir + '/S' + str(i).zfill(
-                    2) + '_R' + str(r).zfill(2) + '.mat')['final_poses'][0]
-            # allp = []
-            for a in y:  # 11 actions
-                a = a.flatten()
-                for pose in a:
-                    # print(pose.shape)
-                    if mode == 'test':
-                        # pose = pose - pose.mean(axis=0)
-                        # pose = 2 * (pose - poses_min) / (poses_max - poses_min) - 1
-                        # np.save('data/MHAD/test/posesglobalseparate' + name + str(index).zfill(6) + '.npy', pose)
-                        np.save('data/MHAD/test/notscaledpose' + name + str(index).zfill(6) + '.npy', pose)
-                    else:
-
+            if mode == 'train':
+                cond = i != leaveout
+            else:
+                cond = i == leaveout
+            if cond:
+                y = loadmat(
+                    'G:/skola/master/datasets/MHAD/exported/' + dir + '/S' + str(i).zfill(
+                        2) + '_R' + str(r).zfill(2) + '.mat')['final_poses'][0]
+                # allp = []
+                for a in y:  # 11 actions
+                    a = a.flatten()
+                    for pose in a:
                         np.save('data/MHAD/' + mode + '/notscaledpose' + name + str(index).zfill(6) + '.npy', pose)
                         # pose = pose - pose.mean(axis=0)
                         # allp.append(pose)
 
-                    index += 1
+                        index += 1
 
-            # if mode == 'train':
-            #     allp = np.asarray(allp)
-            #     # print(allp.shape)
-            #     poses_min = np.minimum(poses_min, np.min(allp, axis=(0, 1)))
-            #     poses_max = np.maximum(poses_max, np.max(allp, axis=(0, 1)))
-            #     np.save('data/MHAD/train/poses_minmax.npy', [poses_min, poses_max])
+                # if mode == 'train':
+                #     allp = np.asarray(allp)
+                #     # print(allp.shape)
+                #     poses_min = np.minimum(poses_min, np.min(allp, axis=(0, 1)))
+                #     poses_max = np.maximum(poses_max, np.max(allp, axis=(0, 1)))
+                #     np.save('data/MHAD/train/poses_minmax.npy', [poses_min, poses_max])
     return index
 
 
@@ -389,7 +395,7 @@ def scale_poses(mode='train', data='UBC'):
         idx = 0
         poses_file = \
             loadmat(
-                'G:/skola/master/datasets/UBC3V/exported_clouds_mat/hard-pose/train/pose/exported_poses_hard_' + mode + '.mat')[
+                'D:/skola/master/datasets/UBC3V/ubc3v-master/singleview/exported_poses_hard_' + mode + '.mat')[
                 'poses'][0]
         poses = np.asarray([poses_file[i][0] for i in range(poses_file.shape[0])])
 
@@ -410,17 +416,16 @@ def scale_poses(mode='train', data='UBC'):
             p = 2 * (p - poses_min) / (poses_max - poses_min) - 1
             np.save('data/' + data + '/' + mode + '/posesglobalseparateSW/' + str(idx).zfill(5) + '.npy', p)
             idx += 1
-            np.save('data/' + data + '/' + mode + '/posesglobalseparateSW/' + str(idx).zfill(5) + '.npy', p)
-            idx += 1
-            np.save('data/' + data + '/' + mode + '/posesglobalseparateSW/' + str(idx).zfill(5) + '.npy', p)
-            idx += 1
     else:
         # if mode == 'train':
         #     num = numTrainSamples
         # else:
         #     num = numTestSamples
         if test_method == '11subjects':
-            dir = '_11subs/'
+            if numJoints == 35:
+                dir = '35j_11subs' + str(leaveout) + '/'
+            else:
+                dir = '_11subs' + str(leaveout) + '/'
         elif singleview:
             dir = 'SW/'
         else:
@@ -429,7 +434,7 @@ def scale_poses(mode='train', data='UBC'):
         # [poses_min_old, poses_max_old] = np.load('data/' + data + '/train/poses_minmax_old.npy')
 
         if test_method == '11subjects':
-            [poses_min, poses_max] = np.load('data/' + data + '/train/poses_minmax_11subs.npy')
+            [poses_min, poses_max] = np.load('data/' + data + '/train/poses_minmax_11subs' + str(leaveout) + '.npy')
         elif singleview:
             [poses_min, poses_max] = np.load('data/' + data + '/train/poses_minmaxSW.npy')
         else:
@@ -478,15 +483,20 @@ def generate_regions(mode='train', data='UBC', start=None, end=None):
     else:
         if data == 'UBC':
             fill = 5
-            [pcls_min, pcls_max] = np.load('data/' + data + '/train/pcls_minmax.npy')
+            pcls_min, pcls_max = np.load('data/' + data + '/train/pcls_minmax.npy')
+            poses_min, poses_max = np.load('data/' + data + '/train/poses_minmax.npy')
         else:  # MHAD, ITOP, CMU
             fill = 6
-        if mode == 'train':
-            num = numTrainSamples
-        elif mode == 'valid':
-            num = numValSamples
+        # if mode == 'train':
+        #     num = numTrainSamples
+        # elif mode == 'valid':
+        #     num = numValSamples
+        # else:
+        #     num = numTestSamples
+        if test_method == '11subjects':
+            num = len(os.listdir(('data/' + data + '/' + mode + '/notscaledpose_11subs' + str(leaveout) + '/')))
         else:
-            num = numTestSamples
+            num = len(os.listdir(('data/' + data + '/' + mode + '/notscaledpose/')))
 
         if start is not None and end is not None:
             r = range(start, end)
@@ -501,27 +511,28 @@ def generate_regions(mode='train', data='UBC', start=None, end=None):
             #     pcl = (pcl + 1) * (pcls_max - pcls_min) / 2 + pcls_min
             # else:
 
-            if mode == 'train':
-                pose = np.load('data/' + data + '/' + mode + '/posesglobalseparateSW/' + str(i).zfill(fill) + '.npy')
-                pcl = np.load('data/' + data + '/' + mode + '/scaledpclglobalSW/' + str(i).zfill(fill) + '.npy')
-                # unscale pcl and pose
-                pcl = (pcl + 1) * (pcls_max - pcls_min) / 2 + pcls_min
-                pose = (pose + 1) * (poses_max - poses_min) / 2 + poses_min
-            else:
-                [poses_min, poses_max] = np.load('data/' + data + '/train/poses_minmax_11subs.npy')
-                [pcls_min, pcls_max] = np.load('data/' + data + '/train/pcls_minmax_11subs.npy')
-                pose = np.load(
-                    'data/' + data + '/' + mode + '/posesglobalseparate_11subs/' + str(i).zfill(fill) + '.npy')
-                pcl = np.load('data/' + data + '/' + mode + '/scaledpclglobal_11subs/' + str(i).zfill(fill) + '.npy')
-                pose = (pose + 1) * (poses_max - poses_min) / 2 + poses_min
-                pcl = (pcl + 1) * (pcls_max - pcls_min) / 2 + pcls_min
+            # if mode == 'train':
+            pose = np.load('data/' + data + '/' + mode + '/notscaledpose35j_11subs12/' + str(i).zfill(fill) + '.npy')
+            pcl = np.load('data/' + data + '/' + mode + '/notscaledpcl_11subs12/' + str(i).zfill(fill) + '.npy')
+            pose = pose.reshape((numJoints, 3))
+            # unscale pcl and pose
+            # pcl = (pcl + 1) * (pcls_max - pcls_min) / 2 + pcls_min
+            # pose = (pose + 1) * (poses_max - poses_min) / 2 + poses_min
+            # else:
+            #     [poses_min, poses_max] = np.load('data/' + data + '/train/poses_minmax_11subs.npy')
+            #     [pcls_min, pcls_max] = np.load('data/' + data + '/train/pcls_minmax_11subs.npy')
+            #     pose = np.load(
+            #         'data/' + data + '/' + mode + '/posesglobalseparate_11subs/' + str(i).zfill(fill) + '.npy')
+            #     pcl = np.load('data/' + data + '/' + mode + '/scaledpclglobal_11subs/' + str(i).zfill(fill) + '.npy')
+            #     pose = (pose + 1) * (poses_max - poses_min) / 2 + poses_min
+            #     pcl = (pcl + 1) * (pcls_max - pcls_min) / 2 + pcls_min
 
             regions = automatic_annotation(pose, pcl)
             # visualize_3D(pcl, regions=regions, pose=pose)
             if data == 'MHAD':
-                np.save('data/' + data + '/' + mode + '/region_11subs/' + str(i).zfill(fill) + '.npy', regions)
+                np.save('data/' + data + '/' + mode + '/region35j_11subs12/' + str(i).zfill(fill) + '.npy', regions)
             else:
-                np.save('data/' + data + '/' + mode + '/regionSW/' + str(i).zfill(fill) + '.npy', regions)
+                np.save('data/' + data + '/' + mode + '/region/' + str(i).zfill(fill) + '.npy', regions)
 
 
 def validtotrain(index=59059):
@@ -537,7 +548,7 @@ def validtotrain(index=59059):
 
 def scale(mode='train', data='UBC'):
     if test_method == '11subjects':
-        [pcls_min, pcls_max] = np.load('data/' + data + '/train/pcls_minmax_11subs.npy')
+        [pcls_min, pcls_max] = np.load('data/' + data + '/train/pcls_minmax_11subs' + str(leaveout) + '.npy')
     elif singleview:
         [pcls_min, pcls_max] = np.load('data/' + data + '/train/pcls_minmaxSW.npy')
     else:
@@ -555,7 +566,7 @@ def scale(mode='train', data='UBC'):
     # else:
     #     num = numTestSamples
     if test_method == '11subjects':
-        dir = '_11subs/'
+        dir = '_11subs' + str(leaveout) + '/'
     elif singleview:
         dir = 'SW/'
     else:
@@ -564,17 +575,13 @@ def scale(mode='train', data='UBC'):
     num = len(os.listdir(('data/' + data + '/' + mode + '/notscaledpcl' + dir)))
     for i in range(num):
         pcl = np.load('data/' + data + '/' + mode + '/notscaledpcl' + dir + str(i).zfill(fill) + '.npy')
-        # pose = np.load('data/' + mode + '/notscaledpose/' + str(i).zfill(fill) + '.npy')
-        # pcl = (pcl + 1) * (pcls_max_old - pcls_min_old) / 2 + pcls_min_old  # unscale
 
-        if data == 'MHAD':  # TODO also shift to zero mean
+        if data == 'MHAD':  # shift to zero mean
             pcl = pcl - pcl.mean(axis=0)
 
-        pcl = 2 * (pcl - pcls_min) / (pcls_max - pcls_min) - 1  # scaled using new minmax values
-        # pose = 2 * (pose - pcls_min) / (pcls_max - pcls_min) - 1
+        pcl = 2 * (pcl - pcls_min) / (pcls_max - pcls_min) - 1 
 
         np.save('data/' + data + '/' + mode + '/scaledpclglobal' + dir + str(i).zfill(fill) + '.npy', pcl)
-        # np.save('data/' + mode + '/scaledposeglobal/' + str(i).zfill(fill) + '.npy', pose)
 
 
 def find_minmax(data='MHAD', mode='train', pcls=True):
@@ -634,18 +641,21 @@ def find_minmax(data='MHAD', mode='train', pcls=True):
         # else:
         #     num = numTestSamples
         if test_method == '11subjects':
-            num = len(os.listdir(('data/' + data + '/' + mode + '/notscaledpose_11subs/')))
+            num = len(os.listdir(('data/' + data + '/' + mode + '/notscaledpose_11subs' + str(leaveout) + '/')))
         else:
             num = len(os.listdir(('data/' + data + '/' + mode + '/notscaledpose/')))
 
         if pcls:
             if test_method == '11subjects':
-                dir = '/notscaledpcl_11subs/'
+                dir = '/notscaledpcl_11subs' + str(leaveout) + '/'
             else:
                 dir = '/notscaledpcl/'
         else:
             if test_method == '11subjects':
-                dir = '/notscaledpose_11subs/'
+                if numJoints == 35:
+                    dir = '/notscaledpose35j_11subs' + str(leaveout) + '/'
+                else:
+                    dir = '/notscaledpose_11subs' + str(leaveout) + '/'
             else:
                 dir = '/notscaledpose/'
 
@@ -661,7 +671,8 @@ def find_minmax(data='MHAD', mode='train', pcls=True):
 
         if pcls:
             if test_method == '11subjects':
-                np.save('data/' + data + '/' + mode + '/pcls_minmax_11subs.npy', [pcls_min, pcls_max])
+                np.save('data/' + data + '/' + mode + '/pcls_minmax_11subs' + str(leaveout) + '.npy',
+                        [pcls_min, pcls_max])
             elif singleview:
                 np.save('data/' + data + '/' + mode + '/pcls_minmaxSW.npy', [pcls_min, pcls_max])
             else:
@@ -671,7 +682,8 @@ def find_minmax(data='MHAD', mode='train', pcls=True):
             # m = allp.mean(axis=(0, 1))
             # np.save('data/' + data + '/' + mode + '/poses_mean.npy', m)
             if test_method == '11subjects':
-                np.save('data/' + data + '/' + mode + '/poses_minmax_11subs.npy', [pcls_min, pcls_max])
+                np.save('data/' + data + '/' + mode + '/poses_minmax_11subs' + str(leaveout) + '.npy',
+                        [pcls_min, pcls_max])
             elif singleview:
                 np.save('data/' + data + '/' + mode + '/poses_minmaxSW.npy', [pcls_min, pcls_max])
             else:
@@ -680,7 +692,7 @@ def find_minmax(data='MHAD', mode='train', pcls=True):
 
 def unscale_to_cm(pose, mode='train', data='UBC'):
     if test_method == '11subjects':
-        [poses_min, poses_max] = np.load('data/' + data + '/' + mode + '/poses_minmax_11subs.npy')
+        [poses_min, poses_max] = np.load('data/' + data + '/' + mode + '/poses_minmax_11subs' + str(leaveout) + '.npy')
     elif singleview:
         [poses_min, poses_max] = np.load('data/' + data + '/' + mode + '/poses_minmaxSW.npy')
     else:
@@ -768,20 +780,21 @@ if __name__ == "__main__":
     # CMU_to_npy('171026_pose1')
     # CMU_to_npy('171026_pose2')
     # CMU_to_npy('171026_pose3')
+    # make_batch_files(mode='test')
 
-    # split_CMU(0.2) # wo pose6
-    # generate_regions(data='CMU')
-    # find_minmax(data='CMU')  # todo zero mean local
-    # scale_CMU(mode='test')
-
-    UBC_convert_pcl_files(index=54054, start=20, end=60, mode='train', random_subsampling=False)
-    generate_regions(mode='train', data='UBC', start=33033, end=numTrainSamples)
-    # make_batch_files(mode='train')
-    # load_poses(index=45045, start=17, mode='train')  # TODO
-    # TODO check pcl + pose (correct order)
-    # pcl = np.load('data/UBC/train/scaledpclglobalSW/33033.npy', allow_pickle=True)
-    # pose = np.load('data/UBC/train/posesglobalseparateSW/50000.npy', allow_pickle=True)
-    # region = np.load('data/UBC/train/regionSW/33033.npy', allow_pickle=True)
+    # pcl = np.load('data/MHAD/test/notscaledpcl_11subs12/010200.npy', allow_pickle=True)
+    # pose = np.load('data/MHAD/test/notscaledpose35j_11subs12/010200.npy', allow_pickle=True)
+    # region = np.load('data/MHAD/test/region35j/010200.npy', allow_pickle=True)
     # pcl = pcl.reshape(2048, 3)
-    # visualizer.visualize_3D(pcl, pause=False, regions=region, numJoints=numJoints)
+    # visualizer.visualize_3D(pcl, pause=False, pose=pose)
+    # visualizer.visualize_3D(pcl, pause=False, regions=region)
+
+    # MHAD_loadpcls(index=0, mode='train', leaveout=12)
+    # MHAD_load_poses(index=0, mode='train', leaveout=12)
+    # MHAD_loadpcls(index=0, mode='test', leaveout=12)
+    # MHAD_load_poses(index=0, mode='test', leaveout=12)
+    # generate_regions(mode='train', data=dataset)
+    # generate_regions(mode='test', data=dataset)
+    scale_poses(mode='train', data=dataset)
+    scale_poses(mode='test', data=dataset)
     # pass

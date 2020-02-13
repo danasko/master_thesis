@@ -38,7 +38,9 @@ class DataGenerator(Sequence):
         self.four_channels = four_channels
         self.predicted_regs = predicted_regs
         if predicted_regs and test:
-            self.regions = np.load(self.path + 'predicted_regs.npy')
+            self.regions = np.load(self.path + 'predicted_regs' + ('_11subs' if elevensubs else '') + (
+                '35j' if numJoints == 35 else '') + (
+                                       'SW' if singleview else '') + '.npy')
         if loadBatches:
             if singleview:
                 self.list_IDs = [str(i + 1).zfill(fill) for i in
@@ -57,8 +59,10 @@ class DataGenerator(Sequence):
                 self.list_IDs = [str(i).zfill(fill) for i in
                                  range(len(os.listdir(path + 'scaledpclglobalSW/')))]
             elif elevensubs:
-                self.list_IDs = [str(i + 1).zfill(fill) for i in
+                self.list_IDs = [str(i).zfill(fill) for i in
                                  range(len(os.listdir(path + 'scaledpclglobal_11subs/')))]
+                if predicted_regs:
+                    self.list_IDs = self.list_IDs[:-(len(self.list_IDs) % 32) - 1]
             else:
                 # assert not singleview
                 self.list_IDs = [str(i).zfill(fill) for i in
@@ -137,7 +141,8 @@ class DataGenerator(Sequence):
                         y = np.load(self.path + 'posesglobalseparate_11subsbatches/' + list_IDs_temp + '.npy')
                     if not self.test or self.four_channels:
                         if self.predicted_regs:
-                            regs = np.load(self.path + 'region_11subs_predicted_batches/' + list_IDs_temp + '.npy').reshape(
+                            regs = np.load(
+                                self.path + 'region_11subs_predicted_batches/' + list_IDs_temp + '.npy').reshape(
                                 (self.batch_size, self.numPoints))
                         else:
                             regs = np.load(self.path + 'region_11subsbatches/' + list_IDs_temp + '.npy').reshape(
@@ -176,10 +181,13 @@ class DataGenerator(Sequence):
         else:  # no batches saved ==> valid or test set
             if self.numJoints == 35:
                 name = '35j'
+                pclname = ''
             elif self.elevensubs:
                 name = '_11subs'
+                pclname = '_11subs'
             elif self.singleview:
                 name = 'SW'
+                pclname = 'SW'
             else:
                 name = ''
             X = np.empty((self.batch_size, self.numPoints, 1, 3))
@@ -193,7 +201,7 @@ class DataGenerator(Sequence):
             # Generate data
             for i, ID in enumerate(list_IDs_temp):
                 # Store sample
-                X[i,] = np.reshape(np.load(self.path + 'scaledpclglobal' + name + '/' + ID + '.npy'),
+                X[i,] = np.reshape(np.load(self.path + 'scaledpclglobal' + pclname + '/' + ID + '.npy'),
                                    newshape=(self.numPoints, 1, 3))
                 if not self.segnet:
                     # Store labels
