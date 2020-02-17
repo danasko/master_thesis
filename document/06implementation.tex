@@ -166,7 +166,8 @@ Since the used datasets (except for the UBC3V) captures real-world data, the raw
 \noindent
 The MHAD dataset does not provide any partition into the train and test data. Thus, the test data was selected as randomly sampled 25\% of the whole dataset during the experiments, while the rest was marked as the train set. % spomenut aj leave-one-out subject partition
 As already pointed out in the original proposal of the PBPE model, the skeleton representation in the MHAD dataset is very detailed, yielding a total of 35 skeletal joints. Though this provides the ability of estimating the pose with higher complexity, some of the joints have the locations in the skeleton representation so close to each other, they may be considered redundant when estimating a full-body pose. Among these joints are two pairs of nodes located at toe tips and one additional pair of nodes representing the fingertips.
-\textcolor{red}{TODO compare 29 vs 35 joints in Table - in Results chapter} As shown in Table ..., it is interesting to observe how the number of joints in the skeleton (and the complexity of the model) influences the pose estimation results.\par
+\textcolor{red}{TODO compare 29 vs 35 joints in Table - in Results chapter} As shown in Table ..., it is interesting to observe how the number of joints in the skeleton influences the pose estimation results.\par
+% TODO dopisat ako v paperi, ze sme nezmensili nijak vyrazne komplexitu kostry
 \vspace{5mm}
 \noindent 
 As the real datasets do not comprise the partition into the particular body regions, the automated technique for the annotation has been proposed in the original implementation of PBPE model. Each skeletal joint is assigned one body region. Using the automatic annotation, each point of the point cloud is associated with the closest skeletal joint based on Euclidean distance. The example of the annotated point cloud is shown in Figure \ref{fig:reg_annotation}.\par 
@@ -203,7 +204,7 @@ In both networks of the pipeline, the input point clouds are being processed in 
 \begin{figure}[H]
 \begin{center}
   \includegraphics[width=\textwidth]{images/implementation/4chan_pipeline_mine2.png}
-  \caption[The Four-Channel Pose Estimation pipeline.]{ The Four-Channel Pose Estimation pipeline: First, point clouds are segmented into body regions in the segmentation network (up), then the input point clouds are concatenated with the predicted per-point body region assignment as a fourth channel, and fed into the regression network (down).}
+  \caption[The Four-Channel Pose Estimation pipeline.]{ The Four-Channel Pose Estimation pipeline: First, point clouds are segmented into body regions in the segmentation network (top), then the input point clouds are concatenated with the predicted per-point body region assignment as a fourth channel, and fed into the regression network (bottom).}
   \label{fig:4chan_pipeline}
 \end{center}
 \end{figure}
