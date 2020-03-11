@@ -2,7 +2,7 @@
 This chapter is dedicated to the description of the implementation details of the particular methods and neural models. We will introduce the architecture of the models, as well as the data pre-processing, training procedures and optimization parameters used.
 
 \section{Deep Depth Pose model}
-In this section, we are going to describe our implementation of the DDP model (proposed in \cite{Marin18jvcir}) in Keras framework. The follow-up additional modifications of the model are presented at the end of the section.\par
+In this section, we are going to describe our implementation of the DDP model (proposed in~\cite{Marin18jvcir}) in Keras framework. The follow-up additional modifications of the model are presented at the end of the section.\par
 \vspace{5mm}
 \noindent
 The DDP model is based on the idea of linearly combining the predefined prototype poses to obtain the resulting pose estimation. The set of prototype poses is produced by clustering the training dataset into $K$ clusters, $K$ being a hyperparameter of the network. The output of the model represents $K$ weights, each corresponding to one of the prototype poses. The final estimated pose is then obtained as a sum of the weighted prototypes.
@@ -16,7 +16,7 @@ The architecure of the DDP model itself is relatively simple. The model is actua
 \begin{figure}[H]
 \begin{center}
   \includegraphics[width=\textwidth]{images/implementation/ddp.PNG}
-  \caption[Deep Depth Pose model architecture \cite{Marin18jvcir}.]{Deep Depth Pose model architecture \cite{Marin18jvcir} (\textit{P} stands for pooling layer, \textit{Dr} indicates dropout, $K$ is the number of prototype poses).}
+  \caption[Deep Depth Pose model architecture~\cite{Marin18jvcir}.]{Deep Depth Pose model architecture~\cite{Marin18jvcir} (\textit{P} stands for pooling layer, \textit{Dr} indicates dropout, $K$ is the number of prototype poses).}
   \label{fig:ddp}
 \end{center}
 \end{figure}
@@ -34,7 +34,7 @@ The loss function used during training the model is defined as huber loss with a
 
 \subsection{Initialization}
 
-The values of the model's hyperparameters from the original DDP paper were chosen using the 'Mann-Whitney U-test' \cite{mann1947}, thus determining, whether the median difference between pairs of configurations are statistically significant. The value of the regularization coefficient was fixed to $\alpha = 0.08$ for the ITOP dataset, and $\alpha = 0.01$ for the UBC3V dataset. The number of prototypes was set to $K=70$ and $K=100$ regarding the ITOP and the UBC3V dataset respectively.\par
+The values of the model's hyperparameters from the original DDP paper were chosen using the 'Mann-Whitney U-test'~\cite{mann1947}, thus determining, whether the median difference between pairs of configurations are statistically significant. The value of the regularization coefficient was fixed to $\alpha = 0.08$ for the ITOP dataset, and $\alpha = 0.01$ for the UBC3V dataset. The number of prototypes was set to $K=70$ and $K=100$ regarding the ITOP and the UBC3V dataset respectively.\par
 \vspace{5mm}
 \noindent
 The model learns using the Adam optimizer with the learning rate set to $10^{-3}$, which is progressively decreasing during the training.  The weights in the model are initialized using the Xavier normal initializer, that is randomly chosen from the normal distribution with zero mean and a standard deviation proportional to the filter size. The biases are initially set to zero. The size of batches is set to $b=64$.
@@ -78,10 +78,10 @@ The final results of both the original DDP and modified DDP model, evaluated on 
 
 \section{Point-Based Pose Estimation model}
 
-As another part of our study, we chose to examine the Point-Base Pose Estimation (PBPE) model \cite{Ali19}. Again, we re-implement the method in Keras framework, though the original implementation was in pure Tensorflow. However, note that the original code was not published prior to our implementation.\par
+As another part of our study, we chose to examine the Point-Base Pose Estimation (PBPE) model~\cite{Ali19}. Again, we re-implement the method in Keras framework, though the original implementation was in pure Tensorflow. However, note that the original code was not published prior to our implementation.\par
 \vspace{5mm}
 \noindent % TODO este popisat zakladnu myslienku modelu
-The model is heavily inspired by the implementation of PointNet \cite{DBLP:journals/corr/QiSMG16}, which was built for the task of object classification and semantic segmentation. Basically, the architecture has been modified to fit the task of human pose estimation, making use of the auxiliary sub-network contributing to the global model loss.
+The model is heavily inspired by the implementation of PointNet~\cite{DBLP:journals/corr/QiSMG16}, which was built for the task of object classification and semantic segmentation. Basically, the architecture has been modified to fit the task of human pose estimation, making use of the auxiliary sub-network contributing to the global model loss.
 
 
 \subsection{Model structure}
@@ -91,7 +91,7 @@ The architecture of the proposed model consists of two branches (or sub-networks
 \begin{figure}[H]
 \begin{center}
   \includegraphics[height=200px]{images/implementation/pbpe2.PNG}
-  \caption{The Point-Based Pose Estimation model architecture \cite{Ali19}.}
+  \caption{The Point-Based Pose Estimation model architecture~\cite{Ali19}.}
   \label{fig:PBPE}
 \end{center}
 \end{figure}
@@ -127,7 +127,7 @@ The weights inside the model are sampled from the normal distribution with zero 
 %\begin{figure}[H]
 %\begin{center}
 %  \includegraphics[height=140px]{images/implementation/itop_seg.png}
-%  \caption[Sample point cloud from ITOP-front dataset \cite{haque2016viewpoint}.]{ Sample point cloud from ITOP-front dataset \cite{haque2016viewpoint}, left – before, right – after segmentation.}
+%  \caption[Sample point cloud from ITOP-front dataset~\cite{haque2016viewpoint}.]{ Sample point cloud from ITOP-front dataset~\cite{haque2016viewpoint}, left – before, right – after segmentation.}
 %  \label{fig:itop_seg}
 %\end{center}
 %\end{figure}
@@ -153,7 +153,7 @@ As the next pre-processing step, the point clouds were sub-sampled to the specif
 \begin{figure}[H]
 \begin{center}
   \includegraphics[width=\textwidth]{images/implementation/mhad.png}
-  \caption[Data pre-processing shown on a sample point cloud from MHAD dataset \cite{Vidal:2013:BMC:2478277.2478412}.]{ Data pre-processing shown on a sample point cloud from MHAD dataset \cite{Vidal:2013:BMC:2478277.2478412} a) before segmentation, b) after removing the background and floor, c) after final clustering.}
+  \caption[Data pre-processing shown on a sample point cloud from MHAD dataset~\cite{Vidal:2013:BMC:2478277.2478412}.]{ Data pre-processing shown on a sample point cloud from MHAD dataset~\cite{Vidal:2013:BMC:2478277.2478412} a) before segmentation, b) after removing the background and floor, c) after final clustering.}
   \label{fig:mhad}
 \end{center}
 \end{figure}
@@ -188,7 +188,7 @@ For the sake of achieving as accurate pose estimation as possible, we made a num
 The loss function has been replaced by mean absolute error, as it helped the model to converge faster in our case. The hyperparameters of the model mostly preserve the same values as in the original paper, except for the learning rate and loss weights. Given by our observations, we fine-tuned the weight parameter of the global loss to $w_g=1$, and decreased the weight of the segmentation branch to $w_a = 0.01$. We set the initial learning rate to $5^{-4}$, while reducing it with an exponential decay rate of $d = 0.2$ in each epoch. Again, the differences between the performance with the particular hyper-parameter values might be caused by switching to another deep learning framework. 
 
 
-\section{Four-Channel Pose Estimation} % TODO
+\section{Segmentation-Guided Pose Estimation} % TODO
 
 This section is dedicated to the implementation of a novel approach we present as a part of the thesis contribution. The core of the proposed method is a two-stage pipeline, consisting of a body segmentation network and a regression network. The two subsequent stages take a point cloud as an input and produce skeletal joint coordinates as a result.\par
 \vspace{5mm}
@@ -204,7 +204,7 @@ In both networks of the pipeline, the input point clouds are being processed in 
 \begin{figure}[H]
 \begin{center}
   \includegraphics[width=\textwidth]{images/implementation/4chan_pipeline_mine2.png}
-  \caption[The Four-Channel Pose Estimation pipeline.]{ The Four-Channel Pose Estimation pipeline: First, point clouds are segmented into body regions in the segmentation network (top), then the input point clouds are concatenated with the predicted per-point body region assignment as a fourth channel, and fed into the regression network (bottom).}
+  \caption[The Segmentation-Guided Pose Estimation pipeline.]{ The Segmentation-Guided Pose Estimation pipeline: First, point clouds are segmented into body regions in the segmentation network (top), then the input point clouds are concatenated with the predicted per-point body region assignment as a fourth channel, and fed into the regression network (bottom).}
   \label{fig:4chan_pipeline}
 \end{center}
 \end{figure}
