@@ -1,5 +1,12 @@
 \chapter{Results}\label{chap:results}
 
+% TODO vseobecne blaboly na uvod
+
+\section{Evaluation metrics}
+In the process of evaluation, we used mean per joint position error (MPJPE) and mean average precision (mAP) as metrics, following~\cite{Ali19,haque2016viewpoint,Marin18jvcir,Shafaei16}. Mean average precision is defined as percentage of all skeletal joints predicted under $10 \; \mbox{cm}$ threshold from their ground truth position.
+
+\section{Experiments}
+
 % MHAD - During visual inspection of Berkely MHAD
 %we noticed that on some frames, especially when the subject
 %bends over, the location of the hands is outside of the body
@@ -8,6 +15,4 @@
 
 % CMU - mention that there is no documentation of any pose estimation results on this dataset so far, up to our knowledge
 
-% Four-channel Pose Estimation
-
-% TODO the 4chan model proved to benefit from the redundancy in the network inputs, being able to absorb the local and global context at once.
+% TODO our proposed model proved to benefit from the redundancy in the network inputs, being able to absorb the local and global context at once. - mozno az v conclusion ?

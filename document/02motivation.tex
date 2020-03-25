@@ -11,8 +11,11 @@ It is important to mention, that recording of a quality depth dataset is not a t
 \vspace{5mm}
 \noindent Another issue concerning pose estimation from 3D data is the actual type of 3D data that is passed as input to the neural network. The most frequent option is to use depth maps, thus encoding the third dimension into the 2D image. The depth maps are a very dense representation of a human pose, which results in expensive computations and lowering the time efficiency, while also processing the seemingly redundant data. Furthermore, since depth maps are usually treated by neural networks as 2D images, there arises the same problem as in estimating 3D pose from RGB data, i.e. the need for highly non-linear operations. Additionally, because of the projection of an object in 3D space onto a 2D image plane, the actual shape of the human pose can be distorted in the depth map, which means the network has to perform the perspective distortion-invariant estimation. In an attempt to overcome these drawbacks, voxelized grids have been used in several solutions to provide sparser 3D data representation. Despite that, voxels have their shortcomings, too. First of all, voxels require 3D convolution operations, which are rather demanding in terms of memory, time, and computing power. Moreover, the conversion of point clouds or depth maps into the voxelized grids can be time-consuming itself.\par
 \vspace{5mm}
+
 % TODO neviem ci toto znova opakovat na konci kazdej kapitoly../ci ma byt na konci motivacie zhrnutie co ideme robit ( ale este nie ako to riesime..)
-\noindent The aim of our thesis is to develop a depth-based human pose estimation method based on neural network, which predicts the skeletal joint coordinates from 3D human pose input data. %To avoid the projection of 3D human pose to 2D image space, we employ unorganized and unordered point clouds on the input in our approach.  - nedavat tam este riesenie, skor len zadanie ulohy, problemu, co ideme riesit
-Our goal is to propose our own model, in addition to implementing several well-performing models proposed in existing papers. Next, we aim to evaluate the strategies on %both existing 
-benchmark datasets%, and our own novel recorded dataset
-, and compare the results with the current state-of-the-art.\par
+% ci tu uz napisat ako sa snazime overcomenut spominane problemy?
+
+%\noindent The aim of our thesis is to develop a depth-based human pose estimation method based on neural network, which predicts the skeletal joint coordinates from 3D human pose input data. %To avoid the projection of 3D human pose to 2D image space, we employ unorganized and unordered point clouds on the input in our approach.  - nedavat tam este riesenie, skor len zadanie ulohy, problemu, co ideme riesit
+%Our goal is to propose our own model, in addition to implementing several well-performing models proposed in existing papers. Next, we aim to evaluate the strategies on %both existing 
+%benchmark datasets%, and our own novel recorded dataset
+%, and compare the results with the current state-of-the-art.\par
