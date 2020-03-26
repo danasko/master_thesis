@@ -10,13 +10,13 @@ In this thesis, we implement all of the studied models in python deep learning l
 
 In this section, we are going to describe the datasets which will be used for the evaluation purposes of this thesis. All of the datasets mentioned below were made publicly available for research purposes.
 \subsection{ITOP}
-The Invariant-Top View Dataset (ITOP)~\cite{haque2016viewpoint} consists of approximately 50k real-world depth images from two camera viewpoints (front view and top view). It captures 20 people, each performing 15 different actions. The dataset comes with the initial partition of the data into the train and test set. The labeled train and test data contain around 18k and 5k samples from each viewpoint, respectively. Besides the depth images and the ground truth joint labels, the dataset also includes raw point clouds. The skeletal model in this dataset is described by 15 body joints. Sample depth maps from the dataset are shown in Figure \ref{fig:itop}. As can be seen in the figure, the depth images are rather noisy, but the noise can be partly reduced by several background segmentation methods.\par
+The Invariant-Top View Dataset (ITOP)~\cite{haque2016viewpoint} consists of approximately 50K real-world depth images from two camera viewpoints (front view and top view). It captures 20 people, each performing 15 different actions. The dataset comes with the initial partition of the data into the train and test set. The labeled train and test data contain around 18K and 5K samples from each viewpoint, respectively. Besides the depth images and the ground truth joint labels, the dataset also includes raw point clouds. The skeletal model in this dataset is described by 15 body joints. Sample depth maps from the dataset are shown in Figure \ref{fig:itop}. As can be seen in the figure, the depth images are rather noisy, but the noise can be partly reduced by several background segmentation methods.\par
 
 \vspace{5mm}
 \begin{figure}[H]
 \begin{center}
   \includegraphics[height=130px]{images/implementation/itop.png}
-  \caption[Sample depth images from the ITOP dataset~\cite{haque2016viewpoint}.]{Sample depth images from the ITOP dataset~\cite{haque2016viewpoint} (front and top view).}
+  \caption[Sample depth images from the ITOP dataset.]{Sample depth images from the ITOP dataset~\cite{haque2016viewpoint} (front and top view).}
   \label{fig:itop}
 \end{center}
 \end{figure}
@@ -32,7 +32,7 @@ The UBC3V~\cite{Shafaei16} is a synthetic dataset made for the task of pose esti
 \begin{figure}[H]
 \begin{center}
   \includegraphics[height=130px]{images/implementation/ubc3v.png}
-  \caption[Sample data from the UBC3V dataset~\cite{Shafaei16}.]{Sample data from the UBC3V dataset (the figure shows the same pose from three different cameras)~\cite{Shafaei16}.}
+  \caption[Sample data from the UBC3V dataset.]{Sample data from the UBC3V dataset (the figure shows the same pose from three different cameras)~\cite{Shafaei16}.}
   \label{fig:ubc3v}
 \end{center}
 \end{figure}
@@ -41,7 +41,7 @@ The UBC3V~\cite{Shafaei16} is a synthetic dataset made for the task of pose esti
  The depth data are available in the form of depth images, but can be converted into point clouds in world reference coordinates using the intrinsic and extrinsic camera parameters. The ground truth labels are composed of 18 joints per posture, and the dataset also comprises a segmentation of each point cloud into 43 body regions (as can be seen in Figure \ref{fig:ubc3v}).
 
 \subsection{MHAD}
-The Berkeley Multimodal Human Action Database (MHAD)~\cite{Vidal:2013:BMC:2478277.2478412} was recorded on real humans. It contains 11 actions performed by 7 male and 5 female subjects. Each subject performed each of the actions 5 times, which yields about 660 action sequences corresponding to about 82 minutes of total recording time. The total number of depth frames is over 250k. The skeleton structure in this dataset is defined by 35 joint locations. Two of the performed actions involve a chair, used for the subject to sit down and stand up. It is worth a mention, that the chair itself provides a lot of clutter in the depth data.\par
+The Berkeley Multimodal Human Action Database (MHAD)~\cite{Vidal:2013:BMC:2478277.2478412} was recorded on real humans. It contains 11 actions performed by 7 male and 5 female subjects. Each subject performed each of the actions 5 times, which yields about 660 action sequences corresponding to about 82 minutes of total recording time. The total number of depth frames is over 250K. The skeleton structure in this dataset is defined by 35 joint locations. Two of the performed actions involve a chair, used for the subject to sit down and stand up. It is worth a mention, that the chair itself provides a lot of clutter in the depth data.\par
 
 %\vspace{5mm}
 %\begin{figure}[H]
