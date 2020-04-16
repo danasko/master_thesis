@@ -1,5 +1,8 @@
-\chapter{Implementation}\label{chap:implementation}
-This chapter is dedicated to the description of the re-implementation of several existing models, along with our modifications, and the implementation details of the novel proposed method. We will introduce the architecture of the models, as well as the data pre-processing, training procedures and optimization parameters used.
+\chapter{Our implementation}\label{chap:implementation}
+This chapter is dedicated to the description of the re-implementation of several existing models, along with our modifications; the implementation details of the novel proposed method, and the technologies we intend to use. We will introduce the architecture of the models, as well as the data pre-processing pipeline, training procedures and optimization parameters used.
+
+\section{Technologies}
+In this thesis, we implement all of the studied models in python deep learning library Keras with Tensorflow backend. All of the experiments are conducted on NVIDIA GTX 1070.
 
 \section{Re-implementation of existing models}
 
@@ -171,7 +174,6 @@ For the sake of achieving as accurate pose estimation as possible, we made a num
 \vspace{5mm}
 \noindent
 The loss function has been replaced by mean absolute error, as it helped the model to converge faster in our case. The hyperparameters of the model mostly preserve the same values as in the original paper, except for the learning rate and loss weights. Given by our observations, we fine-tuned the weight parameter of the global loss to $w_g=1$, and decreased the weight of the segmentation branch to $w_a = 0.01$. We set the initial learning rate to $5^{-4}$, while reducing it with an exponential decay rate of $d = 0.2$ in each epoch. Again, the differences between the performance with the particular hyper-parameter values might be caused by switching to another deep learning framework. 
-
 
 \section{Segmentation-Guided Pose Estimation} % TODO
 
