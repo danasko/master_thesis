@@ -24,7 +24,7 @@
 \setstretch{1.5}
 %\renewcommand\baselinestretch{1.5} % riadkovanie jeden a pol
 
-\newcommand\mftitle{Skeleton Tracking using Deep Learning}
+\newcommand\mftitle{Deep Learning-based Human Pose Estimation from 3D Data}
 \newcommand\mfthesistype{Master thesis}
 \newcommand\mfauthor{Bc. Dana Škorvánková}
 \newcommand\mfadvisor{RNDr. Martin Madaras, PhD.}
@@ -60,7 +60,7 @@
 \end{figure}
 \begin{center}
 	\begin{minipage}{0.8\textwidth}
-		\centerline{\textbf{\Large\MakeUppercase{\mftitle}}}
+		\begin{center}\textbf{\Large\MakeUppercase{\mftitle}}\end{center}
 		\smallskip
 		\centerline{\mfthesistype}
 	\end{minipage}
@@ -90,7 +90,7 @@
 \end{figure}
 \begin{center}
 \begin{minipage}{0.8\textwidth}
-\centerline{\textbf{\Large\MakeUppercase{\mftitle}}}
+\begin{center}\textbf{\Large\MakeUppercase{\mftitle}}\end{center}
 \smallskip
 \centerline{\mfthesistype}
 \end{minipage}
@@ -121,7 +121,7 @@ Supervisor: & \mfadvisor
 
 \begin{figure}[H]
 \begin{center}
-\makebox[\textwidth]{\includegraphics[width=\paperwidth]{images/master_thesis_assignment}}
+\makebox[\textwidth]{\includegraphics[width=\paperwidth]{images/master_thesis_assignment}} % TODO update
 \label{img:zadanie}
 \end{center}
 \end{figure}
@@ -144,17 +144,17 @@ supervisor.
 
 \chapter*{Acknowledgement}\label{chap:thank_you}
 I would like to thank my supervisor for his guidance and valuable feedback. Additionally, I would like to express my gratitude to
-my family, friends and my boyfriend for all their patience and support.
+my family and close friends for all their patience and support.
 
 \chapter*{Abstrakt}\label{chap:abstract_sk}
-Cieľom tejto diplomovej práce je vyvinúť systém na 3D odhad pózy človeka, založený na neurónovej sieti, ktorý má na vstupe trojdimenzionálne dáta (vo forme mračna bodov alebo hĺbkovej mapy) a na výstupe vracia 3D koordináty vrcholov kostry. Naším zámerom je predstavenie nášho vlastného prístupu, ako aj implementácia niekoľkých existujúcich modelov, vynikajúcich svojimi výsledkami v rámci danej problematiky. Jednotlivé metódy následne evaluujeme na referenčných databázach, a porovnáme s doposiaľ najlepšími výsledkami dosiahnutými na uvedených dátach.
+Cieľom tejto diplomovej práce je vyvinúť systém na 3D odhad pózy človeka, založený na neurónovej sieti, ktorý má na vstupe trojdimenzionálne dáta (vo forme mračna bodov alebo hĺbkovej mapy) a na výstupe vracia 3D koordináty vrcholov kostry. Máme v záujme prekonať obmedzenia spojené s vysokou nelinearitou priamej regresie 3D pózy z 2D obrazu využitím 3D vstupných dát, a zvýšiť tak presnosť odhadu. Naším zámerom je predstavenie nášho vlastného prístupu, ako aj implementácia niekoľkých existujúcich modelov, vynikajúcich svojimi výsledkami v rámci danej problematiky. Jednotlivé metódy následne evaluujeme na referenčných databázach, a porovnáme s doposiaľ najlepšími výsledkami dosiahnutými na uvedených dátach.
 
 ~\\
 Kľúčové slová: 3D odhad pózy človeka, hlboké učenie, neurónové siete, mračná bodov
 \vfill\eject 
 
 \chapter*{Abstract}\label{chap:abstract_en}
-The aim of our thesis is to develop a 3D human pose estimation pipeline based on neural network, which takes three-dimensional data (in a form of a point cloud or a depth map) as input and outputs the 3D skeletal joint coordinates. Our goal is to introduce our own approach, in addition to implementing several well-performing models proposed in existing papers. Next, we aim to evaluate the methods on multiple benchmark datasets, and compare the results to the current state-of-the-art.
+The aim of our thesis is to develop a 3D human pose estimation pipeline based on neural network, which takes three-dimensional data (in a form of a point cloud or a depth map) as input and outputs the 3D skeletal joint coordinates. We intend to overcome the limitations associated with high non-linearity of direct regression from 2D image to 3D pose by inferring from 3D input data, and thus increase the estimation accuracy. Our goal is to introduce our own approach, in addition to implementing several well-performing models proposed in existing papers. Next, we aim to evaluate the methods on multiple benchmark datasets, and compare the results to the current state-of-the-art.
 
 ~\\
 Keywords: 3D human pose estimation, deep learning, neural networks, point clouds
