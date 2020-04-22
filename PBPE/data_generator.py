@@ -20,7 +20,7 @@ class DataGenerator(Sequence):
 
     def __init__(self, path, numPoints, numJoints, numRegions, steps=None, batch_size=32, shuffle=False, fill=5,
                  loadBatches=False, singleview=False, test=False, elevensubs=False, segnet=False, four_channels=False,
-                 predicted_regs=False):
+                 predicted_regs=False, split=0):
         """
             path - directory of input data
             numPoints - num of points in point cloud
@@ -39,40 +39,41 @@ class DataGenerator(Sequence):
         self.four_channels = four_channels
         self.predicted_regs = predicted_regs
         if predicted_regs and test:
-            self.regions = np.load(self.path + 'predicted_regs' + ('_11subs' if elevensubs else '') + (
-                '35j' if numJoints == 35 else '') + (
-                                       'SW' if singleview else '') + '.npy')
-        if loadBatches:
-            if singleview:
-                self.list_IDs = [str(i + 1).zfill(fill) for i in
-                                 range(len(os.listdir(path + 'scaledpclglobalSWbatches/')))]
-            elif numJoints == 35:
-                if elevensubs:
-                    self.list_IDs = [str(i + 1).zfill(fill) for i in
-                                     range(len(os.listdir(
-                                         path + 'scaledpclglobal_11subs' + str(leaveout) + 'batches/')))]
-                else:
-                    self.list_IDs = [str(i + 1).zfill(fill) for i in
-                                     range(len(os.listdir(path + 'scaledpclglobal35jbatches/')))]
-            elif elevensubs:
-                self.list_IDs = [str(i + 1).zfill(fill) for i in
-                                 range(len(os.listdir(path + 'scaledpclglobal_11subs' + str(leaveout) + 'batches/')))]
+            self.regions = np.load(self.path + 'predicted_regs' + (
+                'SW' if singleview else '') + ('35j' if numJoints == 35 else '') + (
+                                       '_11subs' + str(leaveout) if elevensubs else '') + '.npy')
+
+        if singleview:
+            if elevensubs:
+                dir = 'scaledpclglobalSW_11subs' + str(leaveout)
             else:
-                self.list_IDs = [str(i + 1).zfill(fill) for i in
-                                 range(len(os.listdir(path + 'scaledpclglobalbatches/')))]
+                dir = 'scaledpclglobalSW'
+        elif numJoints == 35:
+            if elevensubs:
+                dir = 'scaledpclglobal_11subs' + str(leaveout)
+            elif loadBatches:
+                dir = 'scaledpclglobal35j'
+            else:
+                dir = 'scaledpclglobal'
+        elif elevensubs:
+            dir = 'scaledpclglobal_11subs' + str(leaveout)
         else:
-            if singleview:
-                self.list_IDs = [str(i).zfill(fill) for i in
-                                 range(len(os.listdir(path + 'scaledpclglobalSW/')))]
-            elif elevensubs:
-                self.list_IDs = [str(i).zfill(fill) for i in
-                                 range(len(os.listdir(path + 'scaledpclglobal_11subs' + str(leaveout) + '/')))]
-                if predicted_regs:
-                    self.list_IDs = self.list_IDs[:-(len(self.list_IDs) % 32) - 1]
-            else:
-                # assert not singleview
-                self.list_IDs = [str(i).zfill(fill) for i in
-                                 range(len(os.listdir(path + 'scaledpclglobal/')))]
+            dir = 'scaledpclglobal'
+
+        if loadBatches:
+            dir += 'batches'
+            self.list_IDs = [str(i + 1).zfill(fill) for i in range(len(os.listdir(path + dir + '/')))]
+        else:
+            self.list_IDs = [str(i).zfill(fill) for i in range(len(os.listdir(path + dir + '/')))]
+            self.list_IDs = self.list_IDs[:-(len(self.list_IDs) % self.batch_size)]
+
+        self.split = split
+        splitidx = ((len(self.list_IDs) // 2) // batch_size) * batch_size
+        if split == 1:
+            self.list_IDs = self.list_IDs[:splitidx]
+        elif split == 2:
+            self.list_IDs = self.list_IDs[splitidx:]
+
         self.shuffle = shuffle
         self.steps = steps
         self.indexes = None
@@ -117,75 +118,71 @@ class DataGenerator(Sequence):
 
         if self.loadBatches:
             if self.singleview:
-                X = np.load(self.path + 'scaledpclglobalSWbatches/' + list_IDs_temp + '.npy')
+                if self.elevensubs:
+                    dir = 'SW_11subs' + str(leaveout)
+                    if self.numJoints == 35:
+                        posedir = 'SW35j_11subs' + str(leaveout)
+                    else:
+                        posedir = dir
+                else:
+                    dir = 'SW'
+                    posedir = dir
+                X = np.load(self.path + 'scaledpclglobal' + dir + 'batches/' + list_IDs_temp + '.npy')
                 if not self.segnet:
-                    y = np.load(self.path + 'posesglobalseparateSWbatches/' + list_IDs_temp + '.npy')
+                    y = np.load(self.path + 'posesglobalseparate' + posedir + 'batches/' + list_IDs_temp + '.npy')
                 if not self.test or self.four_channels:
                     if self.predicted_regs:
-                        regs = np.load(self.path + 'regionSW_predicted_batches/' + list_IDs_temp + '.npy').reshape(
+                        regs = np.load(
+                            self.path + 'region' + posedir + '_predicted_batches/' + list_IDs_temp + '.npy').reshape(
                             (self.batch_size, self.numPoints))
                     else:
-                        regs = np.load(self.path + 'regionSWbatches/' + list_IDs_temp + '.npy').reshape(
+                        regs = np.load(self.path + 'region' + posedir + 'batches/' + list_IDs_temp + '.npy').reshape(
+                            (self.batch_size, self.numPoints))
+            elif self.numJoints == 35:
+                if self.elevensubs:
+                    dir = '_11subs' + str(leaveout)
+                    pcldir = '_11subs' + str(leaveout)
+                else:
+                    dir = ''
+                    pcldir = '35j'
+                X = np.load(self.path + 'scaledpclglobal' + pcldir + 'batches/' + list_IDs_temp + '.npy')
+                if not self.segnet:
+                    y = np.load(self.path + 'posesglobalseparate35j' + dir + 'batches/' + list_IDs_temp + '.npy')
+                if not self.test or self.four_channels:
+                    if self.predicted_regs:
+                        regs = np.load(
+                            self.path + 'region35j' + dir + '_predicted_batches/' + list_IDs_temp + '.npy').reshape(
+                            (self.batch_size, self.numPoints))
+                    else:
+                        regs = np.load(self.path + 'region35j' + dir + 'batches/' + list_IDs_temp + '.npy').reshape(
+                            (self.batch_size, self.numPoints))
+            elif self.elevensubs:
+                X = np.load(self.path + 'scaledpclglobal_11subs' + str(
+                    leaveout) + 'batches/' + list_IDs_temp + '.npy')
+                if not self.segnet:
+                    y = np.load(self.path + 'posesglobalseparate_11subs' + str(
+                        leaveout) + 'batches/' + list_IDs_temp + '.npy')
+                if not self.test or self.four_channels:
+                    if self.predicted_regs:
+                        regs = np.load(
+                            self.path + 'region_11subs' + str(
+                                leaveout) + '_predicted_batches/' + list_IDs_temp + '.npy').reshape(
+                            (self.batch_size, self.numPoints))
+                    else:
+                        regs = np.load(self.path + 'region_11subs' + str(
+                            leaveout) + 'batches/' + list_IDs_temp + '.npy').reshape(
                             (self.batch_size, self.numPoints))
             else:
-                # X = np.load(self.path + 'scaledpclglobalbatches/' + list_IDs_temp + '.npy')
-
-                if self.numJoints == 35:
-                    if self.elevensubs:
-                        X = np.load(
-                            self.path + 'scaledpclglobal_11subs' + str(leaveout) + 'batches/' + list_IDs_temp + '.npy')
-                        if not self.segnet:
-                            y = np.load(self.path + 'posesglobalseparate35j_11subs' + str(
-                                leaveout) + 'batches/' + list_IDs_temp + '.npy')
-                        if not self.test or self.four_channels:
-                            if self.predicted_regs:
-                                regs = np.load(
-                                    self.path + 'region35j_11subs' + str(
-                                        leaveout) + '_predicted_batches/' + list_IDs_temp + '.npy').reshape(
-                                    (self.batch_size, self.numPoints))
-                            else:
-                                regs = np.load(self.path + 'region35j_11subs' + str(
-                                    leaveout) + 'batches/' + list_IDs_temp + '.npy').reshape(
-                                    (self.batch_size, self.numPoints))
+                X = np.load(self.path + 'scaledpclglobalbatches/' + list_IDs_temp + '.npy')
+                if not self.segnet:
+                    y = np.load(self.path + 'posesglobalseparatebatches/' + list_IDs_temp + '.npy')
+                if not self.test or self.four_channels:
+                    if self.predicted_regs:
+                        regs = np.load(self.path + 'region_predicted_batches/' + list_IDs_temp + '.npy').reshape(
+                            (self.batch_size, self.numPoints))
                     else:
-                        X = np.load(self.path + 'scaledpclglobal35jbatches/' + list_IDs_temp + '.npy')
-                        if not self.segnet:
-                            y = np.load(self.path + 'posesglobalseparate35jbatches/' + list_IDs_temp + '.npy')
-                        if not self.test or self.four_channels:
-                            if self.predicted_regs:
-                                regs = np.load(
-                                    self.path + 'region35j_predicted_batches/' + list_IDs_temp + '.npy').reshape(
-                                    (self.batch_size, self.numPoints))
-                            else:
-                                regs = np.load(self.path + 'region35jbatches/' + list_IDs_temp + '.npy').reshape(
-                                    (self.batch_size, self.numPoints))
-                elif self.elevensubs:
-                    X = np.load(self.path + 'scaledpclglobal_11subs' + str(
-                                    leaveout) + 'batches/' + list_IDs_temp + '.npy')
-                    if not self.segnet:
-                        y = np.load(self.path + 'posesglobalseparate_11subs' + str(
-                                    leaveout) + 'batches/' + list_IDs_temp + '.npy')
-                    if not self.test or self.four_channels:
-                        if self.predicted_regs:
-                            regs = np.load(
-                                self.path + 'region_11subs' + str(
-                                    leaveout) + '_predicted_batches/' + list_IDs_temp + '.npy').reshape(
-                                (self.batch_size, self.numPoints))
-                        else:
-                            regs = np.load(self.path + 'region_11subs' + str(
-                                    leaveout) + 'batches/' + list_IDs_temp + '.npy').reshape(
-                                (self.batch_size, self.numPoints))
-                else:
-                    X = np.load(self.path + 'scaledpclglobalbatches/' + list_IDs_temp + '.npy')
-                    if not self.segnet:
-                        y = np.load(self.path + 'posesglobalseparatebatches/' + list_IDs_temp + '.npy')
-                    if not self.test or self.four_channels:
-                        if self.predicted_regs:
-                            regs = np.load(self.path + 'region_predicted_batches/' + list_IDs_temp + '.npy').reshape(
-                                (self.batch_size, self.numPoints))
-                        else:
-                            regs = np.load(self.path + 'regionbatches/' + list_IDs_temp + '.npy').reshape(
-                                (self.batch_size, self.numPoints))
+                        regs = np.load(self.path + 'regionbatches/' + list_IDs_temp + '.npy').reshape(
+                            (self.batch_size, self.numPoints))
             if self.four_channels:
                 regs = np.expand_dims(np.expand_dims(regs, -1), -1)
                 X = np.concatenate([X, regs], axis=-1)
@@ -209,19 +206,28 @@ class DataGenerator(Sequence):
         else:  # no batches saved ==> valid or test set
             if self.numJoints == 35:
                 if self.elevensubs:
-                    name = '35j_11subs' + str(leaveout)
-                    pclname = '_11subs' + str(leaveout)
+                    if self.singleview:
+                        name = 'SW35j_11subs' + str(leaveout)
+                        pclname = 'SW_11subs' + str(leaveout)
+                    else:
+                        name = '35j_11subs' + str(leaveout)
+                        pclname = '_11subs' + str(leaveout)
                 else:
                     name = '35j'
                     pclname = ''
             elif self.elevensubs:
-                name = '_11subs'
-                pclname = '_11subs'
+                if self.singleview:
+                    name = 'SW_11subs' + str(leaveout)
+                    pclname = 'SW_11subs' + str(leaveout)
+                else:
+                    name = '_11subs' + str(leaveout)
+                    pclname = '_11subs' + str(leaveout)
             elif self.singleview:
                 name = 'SW'
                 pclname = 'SW'
             else:
                 name = ''
+                pclname = ''
             X = np.empty((self.batch_size, self.numPoints, 1, 3))
             if self.four_channels:
                 Xexp = np.empty((self.batch_size, self.numPoints, 1, 4))

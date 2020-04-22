@@ -340,7 +340,7 @@ def mean_avg_precision(y_true, y_pred):
 
     res = Kb.switch(logic, Kb.ones_like(dist), Kb.zeros_like(dist))  # 1 if estimated correctly, else 0
 
-    return Kb.mean(Kb.sum(res, axis=-1) / numJoints, axis=-1)
+    return Kb.mean(Kb.mean(res, axis=-1), axis=-1)
 
 
 def huber_loss(y_true, y_pred):
@@ -380,16 +380,25 @@ def real_time_predict(test_x, get_output_func):
 
 def run_segnet(generator, x, mode='test', save=True):
     # Predict regions from segnet and save
-    subs = ('_11subs' if test_method == '11subjects' else ('35j' if numJoints == 35 else ''))
+    jts = ('35j' if numJoints == 35 else '')
+    subs = (('_11subs' + str(leaveout)) if test_method == '11subjects' else '')
+    view = ('SW' if singleview else '')
+    if test_method == '11subjects':
+        if mode == 'train':
+            num = len(os.listdir('data/' + dataset + '/' + mode + '/scaledpclglobal' + view + subs + 'batches/'))
+        else:
+            num = len(os.listdir('data/' + dataset + '/' + mode + '/scaledpclglobal' + view + subs))
+    else:
+        num = numTrainSamples // batch_size
+
     segnet_model = load_model(
-        'data/models/' + dataset + '/10eps_' + subs + (
-            'SV' if singleview else '') + 'segnet_lr0.001_4residuals_2.blockconvs512.h5')
+        'data/models/' + dataset + '/10eps_' + (
+            'SV' if singleview else '') + subs + jts + 'segnet_lr0.001_4residuals_2.blockconvs512.h5')
     get_output = Kb.function([segnet_model.layers[0].input, Kb.learning_phase()], [segnet_model.layers[-1].output])
     if mode == 'train' and dataset != 'ITOP' and dataset != 'CMU':
-        for b_num in range(numTrainSamples // batch_size):
+        for b_num in range(num):
             pcl_batch = np.load(
-                'data/' + dataset + '/' + mode + '/scaledpclglobal' + subs + (
-                    'SW' if singleview else '') + 'batches/' + str(
+                'data/' + dataset + '/' + mode + '/scaledpclglobal' + view + subs + 'batches/' + str(
                     b_num + 1).zfill(fill) + '.npy')
             # pred = segnet_model.predict(pcl_batch, batch_size=batch_size, steps=None)
             pred = get_output([pcl_batch, 0])[0]
@@ -397,8 +406,9 @@ def run_segnet(generator, x, mode='test', save=True):
             pred = np.expand_dims(pred, -1)
             if save:
                 np.save(
-                    'data/' + dataset + '/' + mode + '/region' + subs + (
-                        'SW' if singleview else '') + '_predicted_batches/' + str(b_num + 1).zfill(fill) + '.npy', pred)
+                    'data/' + dataset + '/' + mode + '/region' + view + jts + subs + '_predicted_batches/' + str(
+                        b_num + 1).zfill(
+                        fill) + '.npy', pred)
     else:
         if dataset == 'ITOP' or dataset == 'CMU':
             pred1 = segnet_model.predict(x[:x.shape[0] // 2], batch_size=batch_size, verbose=1).argmax(axis=-1).astype(
@@ -410,12 +420,19 @@ def run_segnet(generator, x, mode='test', save=True):
             pred = np.concatenate([pred1, pred2], axis=0)
             pred = np.expand_dims(pred, -1)
         else:
+            if generator.split == 1:
+                split = '1'
+            elif generator.split == 2:
+                split = '2'
+            else:
+                split = ''
             pred = segnet_model.predict_generator(generator, use_multiprocessing=True, steps=None, workers=workers,
                                                   verbose=1)
             pred = np.argmax(pred, axis=-1).astype(np.int)
             pred = np.expand_dims(pred, -1)
         if save:
-            np.save('data/' + dataset + '/' + mode + '/predicted_regs' + subs + '.npy', pred)
+            np.save('data/' + dataset + '/' + mode + '/predicted_regs' + view + jts + subs + '_p' + split + '.npy',
+                    pred)
         return pred
 
 
@@ -437,6 +454,19 @@ def step_decay(epoch):
     if lrate < 0.00001:  # clip at 10^-5 to avoid getting stuck at local minima
         lrate = 0.00001  # 0.00003 0.00001
     return lrate
+
+
+def per_joint_err(preds, gt):
+    preds = preds.reshape((preds.shape[0], numJoints, 3))
+    # gt = gt.reshape((gt.shape[0], numJoints, 3))
+
+    preds = unscale_to_cm(preds, 'train', dataset)
+    gt = unscale_to_cm(gt, 'train', dataset)
+
+    diff = np.mean(np.sqrt(np.sum(np.square(preds - gt), axis=-1)), axis=0)
+    print(diff)
+    # np.savetxt('data/' + dataset + '/test/per_joint_err_' + ('SV' if singleview else 'MV') + (
+    #     '_35j' if numJoints == 35 else '') + '.csv', diff, delimiter=',')
 
 
 if __name__ == "__main__":
@@ -482,84 +512,16 @@ if __name__ == "__main__":
 
     callbacks_list = [lrate, tbCallBack, checkpoint]
 
-    # Load training, validation data (only once)
+    # if singleview:
+    #     [pcls_min, pcls_max] = np.load('data/' + dataset + '/train/pcls_minmaxSW.npy')
+    #     [poses_min, poses_max] = np.load('data/' + dataset + '/train/poses_minmaxSW.npy')
+    # elif test_method == '11subjects':
+    #     [pcls_min, pcls_max] = np.load('data/' + dataset + '/train/pcls_minmax_11subs' + str(leaveout) + '.npy')
+    #     [poses_min, poses_max] = np.load('data/' + dataset + '/train/poses_minmax_11subs' + str(leaveout) + '.npy')
+    # else:
+    #     [pcls_min, pcls_max] = np.load('data/' + dataset + '/train/pcls_minmax.npy')
+    #     [poses_min, poses_max] = np.load('data/' + dataset + '/train/poses_minmax.npy')
 
-    # load_poses(0)
-    # scaler = np.asarray([pose_scaler.min_, pose_scaler.scale_])
-    # np.save('data/pose_scaler.npy', scaler)
-
-    # UBC_convert_pcl_files(index=0, start=1, end=2, mode='train')
-    # generate_regions_all(mode='train')
-    # scale(mode='train')
-
-    # UBC_convert_pcl_files(index=0, start=1, end=21, mode='valid')
-    # generate_regions_all(mode='valid')
-    # scale(mode='valid')  # with the same parameters as training set
-
-    # TODO Training
-    # validtotrain()
-
-    # UBC_convert_region_files(37037, 39, 61, 'train')
-
-    # mindex = 0
-    # MHAD_loadpcls(mode='train', start=1, end=12, index=0, singleview=False)  # notscaledpcl
-    # MHAD_load_poses(mode='train', start=1, end=12, index=0, singleview=False)  # notscaledpose
-
-    # MHAD_random_split(0.25, folders=['notscaledpclSW', 'notscaledposeSW', 'regionSW'], start=0, end=281222)
-
-    # MHAD_load_poses(mode='train', start=1, end=13, index=84081, repetitions=(5, 6))  # notscaledpose
-    # generate_regions_all(mode='train', data=dataset)  # region
-    # MHAD_random_split(0.25, folders=['notscaledpose35j'], start=84081, end=112584)
-
-    # print('train/test split done')
-    # find_minmax(data=dataset, mode='train', pcls=True)
-    # find_minmax(data=dataset, mode='train', pcls=False)  # poses
-    # scale(mode='train', data=dataset)
-    # scale_poses(mode='train', data=dataset)
-    # MHAD_loadpcls(mode='test', start=12, end=13, index=0, singleview=False)  # notscaledpcl
-    # MHAD_load_poses(mode='test', start=12, end=13, index=0, singleview=False)  # notscaledpose
-    # scale(mode='test', data=dataset)
-    # # scale_poses(mode='valid', data=dataset)
-    # scale_poses(mode='test', data=dataset)
-
-    # generate_regions_all(mode='train', data=dataset, start=None, end=None)  # region TODO end
-    # generate_regions_all(mode='test', data=dataset)
-    # MHAD_loadpcls(mode='test', start=1, end=13, index=0)
-    # MHAD_load_poses(mode='test', start=1, end=13, index=0, sameaspcls=True)
-    # ITOP_load()
-
-    # centers = cluster('MHAD', k, numTrainSamples, numJoints, batch_size, fill)
-    # centers = np.load('data/' + dataset + '/train/pose_clusters50.npy')
-    #
-    # make_batch_files('train')
-
-    if singleview:
-        [pcls_min, pcls_max] = np.load('data/' + dataset + '/train/pcls_minmaxSW.npy')
-        [poses_min, poses_max] = np.load('data/' + dataset + '/train/poses_minmaxSW.npy')
-    elif test_method == '11subjects':
-        [pcls_min, pcls_max] = np.load('data/' + dataset + '/train/pcls_minmax_11subs.npy')
-        [poses_min, poses_max] = np.load('data/' + dataset + '/train/poses_minmax_11subs.npy')
-    else:
-        [pcls_min, pcls_max] = np.load('data/' + dataset + '/train/pcls_minmax.npy')
-        [poses_min, poses_max] = np.load('data/' + dataset + '/train/poses_minmax.npy')
-
-    # p = np.load('data/UBC/train/scaledpclglobalbatches/00588.npy')[30]  # TODO fix - some poses small range -0.2,-0.9
-    # p = np.reshape(p, (2048, 3))
-    # p = (p + 1) * (pcls_max - pcls_min) / 2 + pcls_min
-    # pose = np.load('data/UBC/train/posesglobalseparatebatches/00588.npy')[30]
-    # pose = np.reshape(pose, (numJoints, 3))
-    # pose = unscale_to_cm(pose, data='UBC')
-    # region = np.load('data/UBC/train/regionbatches/00588.npy')[30]
-    # visualize_3D(p, pose=pose, regions=region, numJoints=numJoints)
-    # visualize_3D_pose(pose, numJoints=29)
-
-    # show an example from train set
-    # pcl = np.load('data/MHAD/train/scaledpclglobalnoshift/075505.npy')
-    # pcl = (pcl + 1) * (pcls_max - pcls_min) / 2 + pcls_min
-    # pose = np.load('data/MHAD/train/posesglobalseparatenoshift/075505.npy')
-    # pose = (pose + 1) * (poses_max - poses_min) / 2 + poses_min
-    # region = np.load('data/MHAD/train/region/075505.npy')
-    # visualize_3D(pcl, regions=region, pose=pose, numJoints=numJoints)
     if segnet:
         metrics = ['accuracy']
         lossf = 'categorical_crossentropy'
@@ -578,17 +540,17 @@ if __name__ == "__main__":
     model.compile(optimizer=Adam,
                   loss=lossf, loss_weights=lossw,
                   metrics=metrics)
-
-    # metrics=[avg_error_proto])
     #
-    model = load_model(
-        'data/models/' + dataset + '/10eps_35j' + view + 'mymodel_lr0.001_noproto_convs1x1_512_256_1residual_' + (
-            'poolto1' if poolTo1 else 'nomaxpool') + ('_globalavgpool' if globalAvg else '') + '_4chan_reg_preds.h5')
+    # model = load_model(
+    #     'data/models/' + dataset + '/10eps_' + jts + 'mymodel_lr0.001_noproto_convs1x1_512_256_1residual_' + (
+    #         'poolto1' if poolTo1 else 'nomaxpool') + (
+    #         '_globalavgpool' if globalAvg else '') + '_4chan_reg_preds.h5')
 
-    # TODO test this model on test predicted regs (trained on GT train regs)
-    # model = load_model('10eps_mymodel_lr0.001_noproto_convs1x1_poolto1_512_256_1residual_globalavgpool_4chan.h5')
+    # # TODO test this model on test predicted regs (trained on GT train regs)
+    # model2 = load_model(
+    #     'data/models/UBC/20eps_mymodel_lr0.001_noproto_convs1x1_512_256_1residual_nomaxpool_globalavgpool_4chan_reg_preds.h5')
 
-    # model = load_model('data/models/' + dataset + '/08eps_35jsegnet_lr0.001_4residuals_2.blockconvs512.h5')
+    # model = load_model('data/models/' + dataset + '/10eps_mymodel_lr0.001_noproto_convs1x1_poolto1_512_256_1residual_globalavgpool_4chan.h5')
 
     # model = load_model('data/models/CMU/20eps_' + name + '.h5')
 
@@ -597,23 +559,24 @@ if __name__ == "__main__":
 
     if dataset == 'ITOP':
         train_x, train_y, train_regs, test_x, test_y, test_regs = load_ITOP_from_npy()
-        pred_regs = np.load('data/ITOP/train/predicted_regs.npy')
+        # pred_regs = np.load('data/ITOP/train/predicted_regs.npy')
         test_pred_regs = np.load('data/ITOP/test/predicted_regs.npy')
         test_x_exp = np.concatenate([test_x, test_pred_regs], axis=-1)
-        train_x_exp = np.concatenate([train_x, pred_regs], axis=-1)
-        model.fit(train_x_exp, train_y, batch_size=batch_size, epochs=20, callbacks=callbacks_list,
-                  # validation_split=0.1
-                  validation_data=(test_x_exp, test_y),
-                  shuffle=True, initial_epoch=0)
-        # [testloss, testavg_err] = test_model.evaluate(test_x, test_y, batch_size=batch_size)
+        # train_x_exp = np.concatenate([train_x, pred_regs], axis=-1)
+        # model.fit(train_x_exp, train_y, batch_size=batch_size, epochs=20, callbacks=callbacks_list,
+        #           # validation_split=0.1
+        #           validation_data=(test_x_exp, test_y),
+        #           shuffle=True, initial_epoch=0)
+        # [testloss, testavg_err, tmap] = model.evaluate(test_x_exp, test_y, batch_size=batch_size)
         # print('test avg error: ', testavg_err)
-        # predictions = test_model.predict(test_x, batch_size=batch_size)
-    elif dataset == 'CMU':  #### CMU panoptic demo #### # todo rewrite as generator ?
-        regs_train = np.load('data/CMU/train/regs_onehot.npy', allow_pickle=True)
-        x_train = np.load('data/CMU/train/scaled_pcls_lzeromean.npy', allow_pickle=True)
-        x_train = np.expand_dims(x_train, axis=2)
-        y_train = np.load('data/CMU/train/scaled_poses_lzeromean.npy', allow_pickle=True)
-        y_train = y_train.reshape((y_train.shape[0], numJoints * 3))
+        preds = model.predict(test_x_exp, batch_size=batch_size)
+        # np.save('data/ITOP/test/predictions.npy', preds)
+    elif dataset == 'CMU':  #### CMU panoptic demo ####
+        # regs_train = np.load('data/CMU/train/regs_onehot.npy', allow_pickle=True)
+        # x_train = np.load('data/CMU/train/scaled_pcls_lzeromean.npy', allow_pickle=True)
+        # x_train = np.expand_dims(x_train, axis=2)
+        # y_train = np.load('data/CMU/train/scaled_poses_lzeromean.npy', allow_pickle=True)
+        # y_train = y_train.reshape((y_train.shape[0], numJoints * 3))
         # one-hot encoding
         # regs_train = np.eye(numRegions, dtype=np.int)[regs_train]
         # regs_train = regs_train.reshape((regs_train.shape[0], numPoints, 1, numRegions))
@@ -624,14 +587,14 @@ if __name__ == "__main__":
                       callbacks=callbacks_list,
                       validation_split=0.2, shuffle=True, initial_epoch=13)  # 0.2
         elif mymodel:
-            regs_train_pred = run_segnet(None, x_train, mode='train', save=True)
-            regs_train_pred = np.load('data/CMU/train/predicted_regs.npy', allow_pickle=True).astype(np.int)
-            x_train = np.concatenate([x_train, regs_train_pred], axis=-1)
-            model.fit(x_train, y_train, batch_size=batch_size,
-                      epochs=20,
-                      callbacks=callbacks_list,
-                      validation_split=0.2, shuffle=True, initial_epoch=0)  # 0.2
-            # pass
+            # regs_train_pred = run_segnet(None, x_train, mode='train', save=True)
+            # regs_train_pred = np.load('data/CMU/train/predicted_regs.npy', allow_pickle=True).astype(np.int)
+            # x_train = np.concatenate([x_train, regs_train_pred], axis=-1)
+            # model.fit(x_train, y_train, batch_size=batch_size,
+            #           epochs=20,
+            #           callbacks=callbacks_list,
+            #           validation_split=0.2, shuffle=True, initial_epoch=0)  # 0.2
+            pass
         else:  # PBPE
             model.fit(x_train, {'output1': y_train, 'output2': regs_train}, batch_size=batch_size,
                       epochs=10,
@@ -660,13 +623,13 @@ if __name__ == "__main__":
             regs_test_pred = np.load('data/CMU/test/predicted_regs.npy', allow_pickle=True).astype(np.int)
             # regs_test_pred = np.load('data/CMU/test/171204_pose6_predicted_regs.npy', allow_pickle=True).astype(np.int)
             x_test = np.concatenate([x_test, regs_test_pred], axis=-1)
-            test_metrics = model.evaluate(x_test, y_test, batch_size=batch_size)
-            # test_preds = model.predict(x_test, batch_size=batch_size, verbose=1)
-            # np.save('data/CMU/test/171204_pose6_predictions.npy', test_preds)
+            # test_metrics = model.evaluate(x_test, y_test, batch_size=batch_size)
+            preds = model.predict(x_test, batch_size=batch_size, verbose=1)
+            # np.save('data/CMU/test/171204_pose6_predictions.npy', preds)
         else:  # PBPE
             test_metrics = test_model.evaluate(x_test, y_test, batch_size=batch_size)
     else:
-        train_generator = DataGenerator('data/' + dataset + '/train/', numPoints, numJoints, numRegions, steps=steps,
+        train_generator = DataGenerator('data/' + dataset + '/train/', numPoints, numJoints, numRegions, steps=stepss,
                                         batch_size=batch_size,
                                         shuffle=True, fill=fill, loadBatches=True, singleview=singleview,
                                         elevensubs=(test_method == '11subjects'), segnet=segnet, four_channels=mymodel,
@@ -674,21 +637,22 @@ if __name__ == "__main__":
         if dataset == 'UBC':
             if not singleview:
                 valid_generator = DataGenerator('data/' + dataset + '/valid/', numPoints, numJoints, numRegions,
-                                                steps=steps,
+                                                steps=stepss,
                                                 batch_size=batch_size, fill=fill, singleview=singleview,
                                                 shuffle=False, segnet=segnet, four_channels=mymodel)
 
-        test_generator = DataGenerator('data/' + dataset + '/test/', numPoints, numJoints, numRegions, steps=steps,
+        test_generator = DataGenerator('data/' + dataset + '/test/', numPoints, numJoints, numRegions, steps=stepss,
                                        batch_size=batch_size, shuffle=False, fill=fill, singleview=singleview,
                                        test=True, elevensubs=(test_method == '11subjects'), segnet=segnet,
-                                       four_channels=mymodel, predicted_regs=predicted_regs)
+                                       four_channels=mymodel, predicted_regs=predicted_regs, split=1)
+
 
         # model.fit_generator(generator=train_generator, epochs=10,
         #                     # validation_data=test_generator,
         #                     # validation_data=(valid_generator if dataset == 'UBC' else test_generator),
         #                     # TODO remove test generator from validation
-        #                     callbacks=callbacks_list, initial_epoch=0, use_multiprocessing=True,  # False
-        #                     workers=workers, shuffle=True, max_queue_size=10)  # 20
+        #                     callbacks=callbacks_list, initial_epoch=3, use_multiprocessing=True,
+        #                     workers=workers, shuffle=True, max_queue_size=10)
         # run_segnet(test_generator, None, 'test', True)
 
     # # # # save the model
@@ -697,45 +661,21 @@ if __name__ == "__main__":
 
     # test_model.save('data/models/' + dataset + '/test_models/' + name + '.h5')
 
-    # Evaluate model (only regression branch)
+    # Predict ###########
 
-    eval_metrics = model.evaluate_generator(test_generator, verbose=1, steps=None, use_multiprocessing=True,
-                                                 workers=workers)
+    # preds = model.predict_generator(test_generator, verbose=1, steps=None, use_multiprocessing=True, workers=workers)
+    preds = np.load('data/UBC/test/predictions.npy')
+    # gt = y_test.reshape((y_test.shape[0], numJoints, 3))
+    gt = np.empty((preds.shape[0], numJoints, 3))
+    for i in range(preds.shape[0]):
+        gt[i] = np.load('data/' + dataset + '/test/posesglobalseparate/' + str(i).zfill(fill) + '.npy')
 
-    # TODO wrap these into separate functions
-    # Evaluate model (both branches)
-    #
-    # [loss, output1_loss, output2_loss, output1_avg_error, output1_map, output2_acc] = model.evaluate_generator(
-    #   test_generator, use_multiprocessing=False, workers=workers, max_queue_size=10, verbose=1, steps=None)
-    # # # #
-    # print('avg error: ', output1_avg_error)
-    #
-    # TODO run segnet and save predicted regions
-    # pred_regs = run_segnet(generator=None, mode='train', save=True)
+    # per_joint_err(preds, gt)
+    # np.save('data/' + dataset + '/test/predictions.npy', preds)
 
-    # predictions = np.load('data/MHAD/test/predictions_testmodel_20eps.npy')
-    # poses = predictions[0]  # output1
-    # poses = np.reshape(poses, (poses.shape[0], numJoints, 3))
+    # Evaluate model (only regression branch) ###########
 
-    # all test gt poses
-
-    # arr = np.empty((numTestSamples, numJoints, 3))
-    # for i in range(numTestSamples):
-    #     p = np.load('data/MHAD/test/posesglobalseparate/' + str(i).zfill(6) + '.npy')
-    #     arr[i] = p
-
-    # for p in range(25, 27):
-    #     poses[p] = unscale_to_cm(poses[p], mode='train')
-    # #  TODO try to unscale with validation set params instead (rather not since one-by-one pipeline)
-    #     visualize_3D_pose(poses[p], pause=False)
-    #     visualize_3D_pose(np.load('data/UBC/valid/notscaledpose/' + str(p).zfill(5) + '.npy'), title='Ground truth',
-    #                       pause=False)
-    # #  TODO visualize thoroughly the segmentation predictions
-    # regions = predictions[1]  # output2
-    # regs = np.argmax(regions, axis=-1)
-    # for r in range(25, 27):
-    #     pcl = np.load('data/UBC/valid/notscaledpcl/' + str(r).zfill(5) + '.npy')
-    #     pose = np.load('data/UBC/valid/notscaledpose/' + str(r).zfill(5) + '.npy')
-    #     region_gt = np.load('data/UBC/valid/region/' + str(r).zfill(5) + '.npy')
-    #     visualize_3D(pcl, regions=region_gt, pose=pose, pause=False, title='ground truth body regions')
-    #     visualize_3D(pcl, regions=regs[r], pose=pose, pause=False, title='predicted body regions')
+    # eval_metrics = model.evaluate_generator(test_generator, verbose=1, steps=None, use_multiprocessing=True,
+    #                                         workers=workers)
+    # print('Test mean error: ', eval_metrics[1])
+    # print('Test mAP@10cm: ', eval_metrics[2])

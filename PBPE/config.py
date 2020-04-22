@@ -1,17 +1,20 @@
-dataset = 'MHAD'
+dataset = 'UBC'
 batch_size = 32
 k = 50
 centers = None
 thresh = 10  # in cm
 numPoints = 2048  # number of points in each pcl
-singleview = True
-test_method = '11subjects'
-# test_method = 'random25'
+# TODO zajtra SV 11subs
+singleview = False
+# test_method = '11subjects'
+test_method = 'random25'
 leaveout = 12
 
 # do NOT set both to True at once
-segnet = True
-mymodel = False
+segnet = False
+mymodel = True
+
+stepss = None
 
 assert not segnet or not mymodel
 
@@ -29,11 +32,11 @@ if dataset == 'MHAD':
         numTestSamples = 35152
     numValSamples = 0
 
-    numJoints = 35  # 29
-    numRegions = 35  # 29
+    numJoints = 29  # 35
+    numRegions = numJoints
     fill = 6
 elif dataset == 'UBC':
-    poolTo1 = True  # False
+    poolTo1 = False  # False
     globalAvg = True
     if singleview:
         numTrainSamples = 177177
@@ -68,32 +71,30 @@ else:  # 'CMU'
     numRegions = 15
     fill = 6
 
-pcls_min = [1000000, 1000000, 1000000]
-pcls_max = [-1000000, -1000000, -1000000]
+# pcls_min = [1000000, 1000000, 1000000]
+# pcls_max = [-1000000, -1000000, -1000000]
+#
+# poses_min = [1000000, 1000000, 1000000]
+# poses_max = [-1000000, -1000000, -1000000]
 
-poses_min = [1000000, 1000000, 1000000]
-poses_max = [-1000000, -1000000, -1000000]
+# if singleview and segnet:
+#     stepss = 4000
 
+st = '_4000steps' if stepss is not None else ''
 view = 'SV_' if singleview else ''
+jts = '35j' if numJoints == 35 else ''
 if segnet:
-    name = view + ('11subs_' if (
-            dataset == 'MHAD' and test_method == '11subjects') else '') + '35jsegnet_lr0.001_4residuals_2.blockconvs512'
+    name = view + ('11subs' + str(leaveout) + '_' if (
+            dataset == 'MHAD' and test_method == '11subjects') else '') + jts + 'segnet_lr0.001_4residuals_2.blockconvs512' + st
 elif mymodel:
-    name = view + ('11subs_' if (
-            dataset == 'MHAD' and test_method == '11subjects') else '') + '35jmymodel_lr0.001_noproto_convs1x1_512_256_1residual_' + (
+    name = view + ('11subs' + str(leaveout) + '_' if (
+            dataset == 'MHAD' and test_method == '11subjects') else '') + jts + 'mymodel_lr0.001_noproto_convs1x1_512_256_1residual_' + (
                'poolto1' if poolTo1 else 'nomaxpool') + (
                '_globalavgpool' if globalAvg else '') + '_4chan_reg_preds'
 else:
-    name = view + ('11subs_' if (
-            dataset == 'MHAD' and test_method == '11subjects') else '') + 'pbpe_new_mae_denserelu_bnsegonly_weights1.01_lrdrop0.8_lr0.0005_3localfeats_woseq6_localzeromean'
+    name = view + ('11subs' + str(leaveout) + '_' if (
+            dataset == 'MHAD' and test_method == '11subjects') else '') + jts + 'pbpe_new_mae_denserelu_bnsegonly_weights1.01_lrdrop0.8_lr0.0005_3localfeats_woseq6_localzeromean'
     # name = 'pbpe_orig'
-
-# TODO try limited steps with SV
-if singleview:
-    # steps = 3000
-    steps = None
-else:
-    steps = None
 
 # use predicted regions when running 4-chan model - only applied when using generator
 if mymodel and (dataset in ['MHAD', 'UBC']):
