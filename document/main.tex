@@ -3,6 +3,7 @@
 \usepackage[slovak, english]{babel}
 \usepackage{epsfig}
 \usepackage{epstopdf}
+\usepackage{pdfpages}
 \usepackage[chapter]{algorithm}
 \usepackage{algorithmic}
 \usepackage{listings}
@@ -116,15 +117,26 @@ Supervisor: & \mfadvisor
 %\eject
 % koniec zadania
 
-\thispagestyle{empty}
+%\thispagestyle{empty}
+%
+%\begin{figure}[H]
+%\begin{center}
+%\makebox[\textwidth]{\includegraphics[width=\paperwidth]{images/assignment1s}} 
+%\label{img:zadanie1}
+%\end{center}
+%\end{figure}
+%
+%\thispagestyle{empty}
+%
+%\begin{figure}[H]
+%\begin{center}
+%\makebox[\textwidth]{\includegraphics[width=\paperwidth]{images/assignment2}}
+%\label{img:zadanie2}
+%\end{center}
+%\end{figure}
 
-
-\begin{figure}[H]
-\begin{center}
-\makebox[\textwidth]{\includegraphics[width=\paperwidth]{images/master_thesis_assignment}} % TODO update
-\label{img:zadanie}
-\end{center}
-\end{figure}
+\includepdf{images/assignment1.pdf}
+\includepdf{images/assignment2.pdf}
 
 {~}\vspace{12cm}
 
