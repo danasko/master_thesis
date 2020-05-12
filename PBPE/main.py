@@ -648,9 +648,6 @@ if __name__ == "__main__":
 
 
         # model.fit_generator(generator=train_generator, epochs=10,
-        #                     # validation_data=test_generator,
-        #                     # validation_data=(valid_generator if dataset == 'UBC' else test_generator),
-        #                     # TODO remove test generator from validation
         #                     callbacks=callbacks_list, initial_epoch=3, use_multiprocessing=True,
         #                     workers=workers, shuffle=True, max_queue_size=10)
         # run_segnet(test_generator, None, 'test', True)

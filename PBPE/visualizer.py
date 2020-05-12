@@ -232,17 +232,6 @@ def visualize_3D_pose(pose, pause=True,
 
 
 if __name__ == "__main__":
-    # idx = 100200
-    # pcl, pose = np.load('data/CMU/train/171204_pose4.npy', allow_pickle=True)[idx]
-    # regions = np.load('data/CMU/train/regions.npy')[idx]
-    # pcl = np.load('data/CMU/train/scaled_pcls.npy', allow_pickle=True)[idx]  # todo check from 98162 to end (val split)
-    # pose = np.load('data/CMU/train/scaled_poses.npy', allow_pickle=True)[idx]
-    # regions = np.load('data/CMU/train/regions/')
-
-    # preds = np.load('data/UBC/test/predictions.npy', allow_pickle=True)
-    # poses_gt = np.load('data/UBC/test/notscaledpose', allow_pickle=True)
-    # preds = preds.reshape((preds.shape[0], config.numJoints, 3))
-
     # sort predictions from most accurate
     # poses_gtnp = np.empty((preds.shape[0], config.numJoints, 3))
     # poses_gt = os.listdir('data/UBC/test/notscaledpose/')
