@@ -2,7 +2,7 @@ import numpy as np
 from keras.utils import Sequence
 import tensorflow as tf
 import os
-from visualizer import *
+# from visualizer import *
 from sklearn.utils import shuffle
 from config import leaveout
 from sklearn.preprocessing import MinMaxScaler

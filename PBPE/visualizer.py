@@ -73,11 +73,6 @@ def visualize_3D(coords, pause=True, array=False, regions=None, pose=None,
         x = coords[:, 0]
         y = coords[:, 1]
         z = coords[:, 2]
-    # if gt:
-    #     color = 'green'
-    # else:
-    #     color = 'magenta'
-    # color = 'darkgrey'
 
     if pose is not None:
         pose = np.reshape(pose, (config.numJoints, 3))
@@ -129,7 +124,7 @@ def visualize_3D(coords, pause=True, array=False, regions=None, pose=None,
         ax.set_xlim(mean_x - max_range, mean_x + max_range)
         ax.set_ylim(mean_y + max_range, mean_y - max_range)
         ax.set_zlim(mean_z - max_range, mean_z + max_range)
-    # ax.invert_yaxis()
+
     if pose is not None:
         if pose.shape[0] == 18:  # UBC dataset
             for bone in UBC_bone_list:
@@ -164,9 +159,6 @@ def visualize_3D(coords, pause=True, array=False, regions=None, pose=None,
                         [gt[:, 2][bone[0]], gt[:, 2][bone[1]]], [gt[:, 1][bone[0]], gt[:, 1][bone[1]]],
                         'green')
 
-    # plt.xlim(-100, 100)
-    # ax.set_zlim3d(-100, 100)
-    # plt.ylim(-100, 100)
     if save_fig:
         ax.view_init(elev=elev, azim=azim)
         plt.savefig('data/' + config.dataset + '/test/figures/' + name + '.png', dpi=dpi)
@@ -204,10 +196,7 @@ def visualize_3D_pose(pose, pause=True,
     ax.set_xlim(mean_x - max_range, mean_x + max_range)
     ax.set_ylim(mean_y - max_range, mean_y + max_range)
     ax.set_zlim(mean_z - max_range, mean_z + max_range)
-    #
-    # plt.xlim(-100, 100)
-    # ax.set_zlim3d(-100, 100)
-    # plt.ylim(-100, 100)
+
     if pose.shape[0] == 18:  # UBC dataset
         for bone in UBC_bone_list:
             ax.plot([pose[:, 0][bone[0]], pose[:, 0][bone[1]]],
@@ -221,10 +210,6 @@ def visualize_3D_pose(pose, pause=True,
             ax.plot([pose[:, 0][bone[0]], pose[:, 0][bone[1]]],
                     [pose[:, 2][bone[0]], pose[:, 2][bone[1]]], [pose[:, 1][bone[0]], pose[:, 1][bone[1]]], color)
 
-    # for i in range(numJoints):
-    #     ax.text(pose[i, 0], pose[i, 2], pose[i, 1], '%s' % (str(i)), size=10, zorder=1,
-    #             color='k')
-
     plt.show()
     if pause:
         plt.pause(0.001)
@@ -232,23 +217,6 @@ def visualize_3D_pose(pose, pause=True,
 
 
 if __name__ == "__main__":
-    # sort predictions from most accurate
-    # poses_gtnp = np.empty((preds.shape[0], config.numJoints, 3))
-    # poses_gt = os.listdir('data/UBC/test/notscaledpose/')
-    # for idx in range(preds.shape[0]):
-    #     poses_gtnp[idx] = np.load('data/UBC/test/notscaledpose/'+poses_gt[idx])
-    # poses_gtnp = np.load('data/UBC/test/notscaledposes.npy', allow_pickle=True)
-    # preds = data_loader.unscale_to_cm(preds, data=config.dataset)
-    # err = np.mean(np.sqrt(np.sum((preds - poses_gtnp) ** 2, axis=-1)), axis=-1)
-    # indices = np.argsort(err)
-    #####
-    # gt_dir = 'notscaledpcl'
-    #
-    # save_frames(preds, config.dataset, gt_dir, numJoints=config.numJoints, noaxes=True, gt=True, fill=config.fill,
-    #             num=indices[9000:9010])
-    # pcl = np.load('data/UBC/train/scaledpclglobal/00002.npy').reshape((2048, 3))
-    # reg = np.load('data/UBC/train/region/00002.npy')
-    # pose = np.load('data/UBC/train/posesglobalseparate/00002.npy')
     poses_min, poses_max = np.load('data/MHAD/train/poses_minmaxSW.npy')
     pcls_min, pcls_max = np.load('data/MHAD/train/pcls_minmaxSW_11subs12.npy')
     pcl = np.load('data/MHAD/train/scaledpclglobalSW_11subs12batches/004011.npy')[15]

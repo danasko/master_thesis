@@ -301,26 +301,6 @@ def avg_error(y_true, y_pred):  # shape=(batch, 3 * numJoints)
     y_pred = unscale_to_cm(y_pred, data=dataset)
     y_true = unscale_to_cm(y_true, data=dataset)
 
-    # y_predX = y_pred[:, :, 0]
-    # y_predY = y_pred[:, :, 1]
-    # y_predZ = y_pred[:, :, 2]
-    #
-    # y_trueX = y_true[:, :, 0]
-    # y_trueY = y_true[:, :, 1]
-    # y_trueZ = y_true[:, :, 2]
-    #
-    # # unscale back to cm
-    # y_predX = unscale_axis_to_cm(y_predX, axis=0, mode='train')
-    # y_predY = unscale_axis_to_cm(y_predY, axis=1, mode='train')
-    # y_predZ = unscale_axis_to_cm(y_predZ, axis=2, mode='train')
-    #
-    # y_trueX = unscale_axis_to_cm(y_trueX, axis=0, mode='train')
-    # y_trueY = unscale_axis_to_cm(y_trueY, axis=1, mode='train')
-    # y_trueZ = unscale_axis_to_cm(y_trueZ, axis=2, mode='train')
-    #
-    # y_pred = Kb.concatenate([Kb.expand_dims(y_predX), Kb.expand_dims(y_predY), Kb.expand_dims(y_predZ)], axis=-1)
-    # y_true = Kb.concatenate([Kb.expand_dims(y_trueX), Kb.expand_dims(y_trueY), Kb.expand_dims(y_trueZ)], axis=-1)
-
     # mean error in cm
     return Kb.mean(Kb.mean(Kb.sqrt(Kb.sum(Kb.square(y_pred - y_true), axis=-1)), axis=-1),
                    axis=-1)
@@ -343,12 +323,6 @@ def mean_avg_precision(y_true, y_pred):
 
 
 def huber_loss(y_true, y_pred):
-    # y_pred = Reshape((numJoints, 3))(y_pred)
-    # y_true = Reshape((numJoints, 3))(y_true)  # shape=(batch, numJoints, 3)
-
-    # y_pred = unscale_to_cm(y_pred)
-    # y_true = unscale_to_cm(y_true)
-
     clip_delta = 1.0  # 4.0
     error = y_true - y_pred
     cond = Kb.abs(error) < clip_delta
@@ -539,7 +513,7 @@ if __name__ == "__main__":
     model.compile(optimizer=Adam,
                   loss=lossf, loss_weights=lossw,
                   metrics=metrics)
-    #
+
     # model = load_model(
     #     'data/models/' + dataset + '/10eps_' + jts + 'mymodel_lr0.001_noproto_convs1x1_512_256_1residual_' + (
     #         'poolto1' if poolTo1 else 'nomaxpool') + (
@@ -645,8 +619,8 @@ if __name__ == "__main__":
                                        four_channels=mymodel, predicted_regs=predicted_regs, split=1)
 
 
-        # model.fit_generator(generator=train_generator, epochs=10,
-        #                     callbacks=callbacks_list, initial_epoch=3, use_multiprocessing=True,
+        # model.fit_generator(generator=train_generator, epochs=20,
+        #                     callbacks=callbacks_list, initial_epoch=0, use_multiprocessing=True,
         #                     workers=workers, shuffle=True, max_queue_size=10)
         # run_segnet(test_generator, None, 'test', True)
 

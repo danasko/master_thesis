@@ -774,11 +774,7 @@ def unscale_to_cm(pose, mode='train', data='UBC'):
         [poses_min, poses_max] = np.load('data/' + data + '/' + mode + '/poses_minmaxSW.npy')
     else:
         [poses_min, poses_max] = np.load('data/' + data + '/' + mode + '/poses_minmax.npy')
-    # [poses_min, poses_max] = np.load('data/' + data + '/' + mode + '/pcls_minmax.npy')
-    # pose2 = np.zeros_like(pose)
-    # pose2[:, 0] = (pose[:, 0] + 1) * (poses_max[0] - poses_min[0]) / 2 + poses_min[0]
-    # pose2[:, 1] = (pose[:, 1] + 1) * (poses_max[1] - poses_min[1]) / 2 + poses_min[1]
-    # pose2[:, 2] = (pose[:, 2] + 1) * (poses_max[2] - poses_min[2]) / 2 + poses_min[2]
+
     pose2 = (pose + 1) * (poses_max - poses_min) / 2 + poses_min
     if data == 'MHAD':  # in mm
         pose2 *= 0.1

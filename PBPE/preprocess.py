@@ -5,7 +5,7 @@ from sklearn.cluster import KMeans
 import random
 import rpy2
 # print(rpy2.__version__)
-# from rpy2.robjects.packages import importr # TODO fix Value Error
+# from rpy2.robjects.packages import importr
 # rdist = importr('rdist')
 
 color_map = [
@@ -74,6 +74,7 @@ def calc_distances(p0, points):
 #                 distances[i] = min(distances[i], distance(p, s))
 #         solution_set.append(remaining_points.pop(distances.index(max(distances))))
 #     return solution_set
+
 def subsample_random(pcl, numPoints):
     # pts = np.empty((numPoints, 3))
     indices = np.random.randint(0, pcl.shape[0], numPoints)
@@ -81,21 +82,11 @@ def subsample_random(pcl, numPoints):
     return pcl[indices]
 
 
-def subsample_r(pcl, numPoints):
-    indices = rdist.farthest_point_sampling(pcl, metric='euclidean', k=numPoints)
-    return pcl[indices]
-
-
 def subsample(pcl, numPoints, pcls_min=None, pcls_max=None, regions=None):  # pose,
     farthest_pts = np.empty((numPoints, 3))
-    # if regions is not None:
-    #     pcl = pcl[regions != 45]
-    #     regions = regions[regions != 45]
+
     p = np.random.randint(pcl.shape[0])
     farthest_pts[0] = pcl[p]
-    # if regions is not None:
-    #     newregions = np.empty((numPoints, 1))
-    #     newregions[0] = regions[p]
 
     distances = calc_distances(farthest_pts[0], pcl)
 
@@ -106,12 +97,6 @@ def subsample(pcl, numPoints, pcls_min=None, pcls_max=None, regions=None):  # po
 
         distances = np.minimum(distances, calc_distances(farthest_pts[i], pcl))
 
-    # pcls_min = np.minimum(pcls_min, np.min(farthest_pts, axis=0))
-    # pcls_max = np.maximum(pcls_max, np.max(farthest_pts, axis=0))
-
-    # if regions is not None:
-    #     return farthest_pts, pcls_min, pcls_max, newregions
-    # visualizer.visualize_3D(farthest_pts, title='farthest pts')
     return farthest_pts  # , pcls_min, pcls_max
 
 
@@ -124,12 +109,9 @@ def region_mapping(regionPartition):  # shape (n, 3)
         cond = np.intersect1d(np.intersect1d(np.where(np.abs(regionPartition[:, 0] - colors[i, 0]) < 3), np.where(
             np.abs(regionPartition[:, 1] - colors[i, 1]) < 3)), np.where(
             np.abs(regionPartition[:, 2] - colors[i, 2]) < 3))
-        # rgbstr = ''.join([str(j) for j in regionPartition[i]])
-        # regs[i] = region_map[rgbstr]
         regs[cond] = i
 
     regs[regs == -1] = 45  # points not belonging to any body part
-    # print(len(regs[regs == 45]))
     return regs
 
 
@@ -144,12 +126,6 @@ def automatic_annotation(pose, pcl):
         position = pcl[i]
         dists = np.sqrt(np.sum((pose - position) ** 2, axis=-1))
         regs[i] = np.argmin(dists)
-        # for j in range(pose.shape[0]):
-        #     dist = distance.euclidean(position, pose[j])
-        #     if mindist is None or dist < mindist:
-        #         mindist = dist
-        #         region = j  # associated with j-th region
-        # regs[i] = region
 
     return regs
 
@@ -182,9 +158,6 @@ def cluster(data, k, numSamples, numJoints, batch_size, fill):
 
 
 def cluster_prototypes(train_labels, k):  # input shape (#samples, J, 3) - train_data labels, K - no. of clusters
-    # j = train_labels.shape[1]
-    # train_labels = np.reshape(train_labels, (train_labels.shape[0], j * 3))
-    # kmeans = KMeans(n_clusters=k, random_state=2)
     kmeans = KMeans(n_clusters=k, random_state=128, init='k-means++')
     kmeans.fit(train_labels)
     kmeans.predict(train_labels)
