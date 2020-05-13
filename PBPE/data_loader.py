@@ -682,13 +682,13 @@ def find_minmax(data='MHAD', mode='train', pcls=True):
         np.save('data/CMU/train/poses_minmax_lzeromean.npy', [pcls_min, pcls_max])  # [poses_min, poses_max]
 
         pcls = 2 * (pcls - pcls_min) / (pcls_max - pcls_min) - 1
-        poses = 2 * (poses - pcls_min) / (pcls_max - pcls_min) - 1  # todo poses_min max
+        poses = 2 * (poses - pcls_min) / (pcls_max - pcls_min) - 1
 
         np.save('data/CMU/train/scaled_pcls_lzeromean.npy', pcls)
         np.save('data/CMU/train/scaled_poses_lzeromean.npy', poses)
 
         test_pcls = 2 * (test_pcls - pcls_min) / (pcls_max - pcls_min) - 1
-        test_poses = 2 * (test_poses - pcls_min) / (pcls_max - pcls_min) - 1  # todo poses_min max
+        test_poses = 2 * (test_poses - pcls_min) / (pcls_max - pcls_min) - 1
 
         np.save('data/CMU/test/scaled_pcls_lzeromean.npy', test_pcls)
         np.save('data/CMU/test/scaled_poses_lzeromean.npy', test_poses)
@@ -859,20 +859,19 @@ if __name__ == "__main__":
     # CMU_to_npy('171026_pose3')
     # make_batch_files(mode='test')
 
-    # TODO SV 35j 11subs12 - load poses, generate regs, scaleposes, make batches
     # MHAD_loadpcls(index=0, mode='train', singleview=singleview, leaveout=leaveout)
     # MHAD_load_poses(index=0, mode='train', singleview=singleview, leaveout=leaveout)
     # MHAD_loadpcls(index=0, mode='test', singleview=singleview, leaveout=leaveout)
     # MHAD_load_poses(index=0, mode='test', singleview=singleview, leaveout=leaveout)
     # generate_regions(mode='train', data=dataset)
-    # generate_regions(mode='test', data=dataset)  # TODO check if regions already correspond
-    # find_minmax(data=dataset, mode='train', pcls=True)  # TODO stop and comment out this
+    # generate_regions(mode='test', data=dataset)
+    # find_minmax(data=dataset, mode='train', pcls=True)
     # find_minmax(data=dataset, mode='train', pcls=False)
     # scale_poses(mode='train', data=dataset)
     # scale_poses(mode='test', data=dataset)
     # scale(mode='train', data=dataset)
     # scale(mode='test', data=dataset)
-    make_batch_files(mode='train')
+    # make_batch_files(mode='train')
 
     # pcls_min, pcls_max = np.load('data/MHAD/train/pcls_minmax_11subs12.npy')
     # poses_min, poses_max = np.load('data/MHAD/train/poses_minmax_11subs12.npy')
@@ -886,4 +885,4 @@ if __name__ == "__main__":
     # visualizer.visualize_3D(pcl, pause=False, pose=pose)
     # visualizer.visualize_3D(pcl, pause=False, regions=region)
 
-    # pass
+    pass

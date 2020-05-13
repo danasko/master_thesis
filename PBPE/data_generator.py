@@ -189,7 +189,7 @@ class DataGenerator(Sequence):
             if not self.test or self.segnet:
                 y_regions = np.eye(self.numRegions)[regs]
                 y_regions = y_regions.reshape((y_regions.shape[0], self.numPoints, 1, self.numRegions))
-                # X, y_regions = shuffle_along_axis(X, y_regions, axis=1)  # TODO shuffle pts in pcl
+                # X, y_regions = shuffle_along_axis(X, y_regions, axis=1)
                 if not self.segnet:
                     X, y, y_regions = shuffle(X, y, y_regions)
                 else:

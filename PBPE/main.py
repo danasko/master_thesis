@@ -47,9 +47,9 @@ def my_model(poolTo1=False, globalAvg=True):
     local_feature3 = Conv2D(filters=2048, kernel_size=(1, 1),
                             activation='relu', kernel_initializer='glorot_normal')(local_feature2)
     local_feature1_exp = Conv2D(filters=2048, kernel_size=(1, 1))(
-        local_feature1)  # TODO try res connection wo global (wo maxpool)
+        local_feature1)
     local_feature2_exp = Conv2D(filters=2048, kernel_size=(1, 1))(
-        local_feature1)  # TODO try res connection wo global (wo maxpool)
+        local_feature1)
     shortcut1 = keras.layers.add([local_feature1_exp, local_feature2_exp, local_feature3])  # add
 
     # res1 = keras.layers.Activation('relu')(res1)  # a bez tohto
@@ -201,7 +201,7 @@ def PBPE_new():
     # Auxiliary part-segmentation network - only for training - removed at test time
 
     c = concatenate([global_feature_exp, local_feature1, local_feature2, local_feature3],
-                    axis=-1)  # TODO try concatenating only last two local feats
+                    axis=-1)
 
     c = Conv2D(filters=256, kernel_size=(1, 1),
                activation='relu', kernel_initializer='glorot_normal')(c)
@@ -235,12 +235,11 @@ def PBPE():
     local_feature1 = Conv2D(filters=512, kernel_size=(1, 1), input_shape=(numPoints, 1, 3),
                             kernel_initializer='glorot_normal',
                             activation='relu')(input_points)
-    # local_feature1 = LeakyReLU()(local_feature1)
-    # local_feature1 = BatchNormalization(momentum=0.9)(x)  # momentum=0.9  # TODO batchnorm
+    # local_feature1 = BatchNormalization(momentum=0.9)(x)  # momentum=0.9
     local_feature2 = Conv2D(filters=2048, kernel_size=(1, 1),
                             activation='relu', kernel_initializer='glorot_normal')(local_feature1)
 
-    # local_feature2 = BatchNormalization(momentum=0.9)(x)  # shape = (b, numPoints=2048, 1, 2048)  # TODO batchnorm
+    # local_feature2 = BatchNormalization(momentum=0.9)(x)  # shape = (b, numPoints=2048, 1, 2048)
 
     global_feature = MaxPooling2D(pool_size=(numPoints, 1))(
         local_feature2)  # strides  # shape= (b, 1, 1, 2048)
@@ -248,11 +247,11 @@ def PBPE():
         global_feature)  # shape= (b, numPoints=2048, 1, 2048)
 
     f = Flatten()(global_feature)
-    f = Dense(256, kernel_initializer='glorot_normal')(f)  # todo dense with activation
-    # f = BatchNormalization(momentum=0.9)(f)  # TODO batchnorm
+    f = Dense(256, kernel_initializer='glorot_normal')(f)
+    # f = BatchNormalization(momentum=0.9)(f)
 
-    f = Dense(256, kernel_initializer='glorot_normal')(f)  # todo dense with activation
-    # f = BatchNormalization(momentum=0.9)(f)  # TODO batchnorm
+    f = Dense(256, kernel_initializer='glorot_normal')(f)
+    # f = BatchNormalization(momentum=0.9)(f)
 
     # f = Dropout(0.3)(f)
 
@@ -533,7 +532,7 @@ if __name__ == "__main__":
     else:  # PBPE model
         metrics = {'output1': [avg_error, mean_avg_precision], 'output2': 'accuracy'}
         lossf = losses
-        lossw = [1.0, 0.01]  # TODO try bigger, original 0.1
+        lossw = [1.0, 0.01]  # original 0.1
         test_model.compile(optimizer=Adam,
                            loss="mean_absolute_error", metrics=metrics)
 
@@ -546,7 +545,6 @@ if __name__ == "__main__":
     #         'poolto1' if poolTo1 else 'nomaxpool') + (
     #         '_globalavgpool' if globalAvg else '') + '_4chan_reg_preds.h5')
 
-    # # TODO test this model on test predicted regs (trained on GT train regs)
     # model2 = load_model(
     #     'data/models/UBC/20eps_mymodel_lr0.001_noproto_convs1x1_512_256_1residual_nomaxpool_globalavgpool_4chan_reg_preds.h5')
 
@@ -606,7 +604,7 @@ if __name__ == "__main__":
         y_test = np.load('data/CMU/test/scaled_poses_lzeromean.npy', allow_pickle=True)
         y_test = y_test.reshape((y_test.shape[0], numJoints * 3))
 
-        # todo test on 171204_pose6 sequence - video results
+        # test on 171204_pose6 sequence - video results
         # x_test = np.load('data/CMU/test/171204_pose6_scaledpcls_lzeromean.npy', allow_pickle=True)
         # x_test = np.expand_dims(x_test, axis=2)
         # y_test = np.load('data/CMU/test/171204_pose6_scaledposes_lzeromean.npy', allow_pickle=True)
@@ -614,7 +612,7 @@ if __name__ == "__main__":
 
         if segnet:
             regs_test = np.load('data/CMU/test/regions.npy', allow_pickle=True)
-            # regs_test = np.load('data/CMU/test/171204_pose6_regs.npy', allow_pickle=True) # todo
+            # regs_test = np.load('data/CMU/test/171204_pose6_regs.npy', allow_pickle=True)
             regs_test = np.eye(numRegions, dtype=np.int)[regs_test]
             regs_test = regs_test.reshape((regs_test.shape[0], numPoints, 1, numRegions))
             test_metrics = model.evaluate(x_test, regs_test, batch_size=batch_size)

@@ -190,8 +190,6 @@ def cluster_prototypes(train_labels, k):  # input shape (#samples, J, 3) - train
     kmeans.predict(train_labels)
     centers = kmeans.cluster_centers_
 
-    print(centers.shape)  # TODO
-
     # centers = np.reshape(centers, (k, j, 3))
     # centers = np.transpose(centers, (1, 0, 2))
     # centers = centers.T

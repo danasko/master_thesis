@@ -4,7 +4,6 @@ k = 50
 centers = None
 thresh = 10  # in cm
 numPoints = 2048  # number of points in each pcl
-# TODO zajtra SV 11subs
 singleview = False
 # test_method = '11subjects'
 test_method = 'random25'
