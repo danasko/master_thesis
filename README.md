@@ -1,4 +1,4 @@
 # master_thesis
 
-Repository for master thesis 'Skeleton Tracking using Deep Learning'
-© Dana Škorvánková 2019
+Repository for master thesis 'Deep Learning-Based Human Pose Estimation from 3D Data'
+© Dana Škorvánková 2020
