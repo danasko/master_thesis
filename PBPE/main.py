@@ -508,7 +508,7 @@ if __name__ == "__main__":
         lossf = losses
         lossw = [1.0, 0.01]  # original 0.1
         test_model.compile(optimizer=Adam,
-                           loss="mean_absolute_error", metrics=metrics)
+                           loss="mean_absolute_error", metrics=[avg_error, mean_avg_precision])
 
     model.compile(optimizer=Adam,
                   loss=lossf, loss_weights=lossw,
