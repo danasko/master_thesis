@@ -1,21 +1,22 @@
 dataset = 'UBC'
 batch_size = 32
-k = 50
-centers = None
 thresh = 10  # in cm
-numPoints = 2048  # number of points in each pcl
+numPoints = 2048  # number of points per pcl
 singleview = False
 # test_method = '11subjects'
 test_method = 'random25'
 leaveout = 12
 
 # do NOT set both to True at once
-segnet = False
-mymodel = True
+sgpe_seg = True
+sgpe_reg = False
 
 stepss = None
 
-assert not segnet or not mymodel
+run_training = False
+predict_on_segnet = False
+
+assert not sgpe_seg or not sgpe_reg
 
 if dataset == 'MHAD':
     poolTo1 = True
@@ -23,9 +24,6 @@ if dataset == 'MHAD':
     if singleview:
         numTrainSamples = 210917
         numTestSamples = 70305
-    # elif test_method == '11subjects':
-    #     numTrainSamples = 128865
-    #     numTestSamples = 11746
     else:
         numTrainSamples = 105459
         numTestSamples = 35152
@@ -35,7 +33,7 @@ if dataset == 'MHAD':
     numRegions = numJoints
     fill = 6
 elif dataset == 'UBC':
-    poolTo1 = False  # False
+    poolTo1 = False
     globalAvg = True
     if singleview:
         numTrainSamples = 177177
@@ -70,35 +68,29 @@ else:  # 'CMU'
     numRegions = 15
     fill = 6
 
-# pcls_min = [1000000, 1000000, 1000000]
-# pcls_max = [-1000000, -1000000, -1000000]
-#
-# poses_min = [1000000, 1000000, 1000000]
-# poses_max = [-1000000, -1000000, -1000000]
-
-# if singleview and segnet:
-#     stepss = 4000
-
 st = '_4000steps' if stepss is not None else ''
 view = 'SV_' if singleview else ''
 jts = '35j' if numJoints == 35 else ''
-if segnet:
+if sgpe_seg:
     name = view + ('11subs' + str(leaveout) + '_' if (
-            dataset == 'MHAD' and test_method == '11subjects') else '') + jts + 'segnet_lr0.001_4residuals_2.blockconvs512' + st
-elif mymodel:
+            dataset == 'MHAD' and test_method == '11subjects') else '') + jts + 'segnet' + st
+elif sgpe_reg:
     name = view + ('11subs' + str(leaveout) + '_' if (
-            dataset == 'MHAD' and test_method == '11subjects') else '') + jts + 'mymodel_lr0.001_noproto_convs1x1_512_256_1residual_' + (
-               'poolto1' if poolTo1 else 'nomaxpool') + (
-               '_globalavgpool' if globalAvg else '') + '_4chan_reg_preds'
+            dataset == 'MHAD' and test_method == '11subjects') else '') + jts + 'sgpe_reg'
+    # 'poolto1' if poolTo1 else 'nomaxpool') + (
+    # '_globalavgpool' if globalAvg else '')
 else:
     name = view + ('11subs' + str(leaveout) + '_' if (
-            dataset == 'MHAD' and test_method == '11subjects') else '') + jts + 'pbpe_new_mae_denserelu_bnsegonly_weights1.01_lrdrop0.8_lr0.0005_3localfeats_woseq6_localzeromean'
-    # name = 'pbpe_orig'
+            dataset == 'MHAD' and test_method == '11subjects') else '') + jts + 'net_PBPE_new'
 
 # use predicted regions when running 4-chan model - only applied when using generator
-if mymodel and (dataset in ['MHAD', 'UBC']):
+if sgpe_reg and (dataset in ['MHAD', 'UBC']):
     predicted_regs = True
 else:
     predicted_regs = False
 
 workers = 4  # mp.cpu_count()
+
+# prototype clustering
+k = 50  # num clusters
+centers = None

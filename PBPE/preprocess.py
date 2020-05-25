@@ -58,8 +58,7 @@ color_map = [
 
 
 def calc_distances(p0, points):
-    # return np.sqrt(np.sum((points - p0) ** 2, axis=-1))
-    return ((p0 - points) ** 2).sum(axis=1)  # -1
+    return ((p0 - points) ** 2).sum(axis=1)
 
 
 # def incremental_farthest_search(points, k):
@@ -76,13 +75,11 @@ def calc_distances(p0, points):
 #     return solution_set
 
 def subsample_random(pcl, numPoints):
-    # pts = np.empty((numPoints, 3))
     indices = np.random.randint(0, pcl.shape[0], numPoints)
-    # pts = pcl[indices]
     return pcl[indices]
 
 
-def subsample(pcl, numPoints, pcls_min=None, pcls_max=None, regions=None):  # pose,
+def subsample(pcl, numPoints, regions=None):
     farthest_pts = np.empty((numPoints, 3))
 
     p = np.random.randint(pcl.shape[0])
@@ -121,8 +118,6 @@ def automatic_annotation(pose, pcl):
     regs = np.empty(shape=(pcl.shape[0], 1), dtype=int)
     # for each point find closest joint
     for i in range(regs.shape[0]):
-        # region = None
-        # mindist = None
         position = pcl[i]
         dists = np.sqrt(np.sum((pose - position) ** 2, axis=-1))
         regs[i] = np.argmin(dists)
@@ -140,7 +135,7 @@ def interpolate_joints(pose):
              [13, 14, 25], [16, 17, 25], [1, 2, 20]]
     for i in range(len(pairs)):
         pose2[idx] = (pose[pairs[i][0]] - pose[pairs[i][1]]) / (100 / pairs[i][2])
-    visualizer.visualize_3D_pose(pose, numJoints=29)
+    visualizer.visualize_3D_pose(pose)
 
 
 def cluster(data, k, numSamples, numJoints, batch_size, fill):
@@ -148,7 +143,7 @@ def cluster(data, k, numSamples, numJoints, batch_size, fill):
     arr = np.empty((numSamples, numJoints * 3))
     for i in range(numSamples // batch_size):
         arr[i * batch_size:(i * batch_size) + batch_size] = np.load(
-            'data/' + data + '/train/posesglobalseparatebatches/' + str(i + 1).zfill(fill) + '.npy')
+            'data/' + data + '/train/scaledposesbatch/' + str(i + 1).zfill(fill) + '.npy')
 
     # cluster into k clusters
     clusters = cluster_prototypes(arr, k)

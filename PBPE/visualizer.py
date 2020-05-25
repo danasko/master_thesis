@@ -17,7 +17,7 @@ CMU_bone_list = [[0, 1], [0, 2], [0, 3], [3, 4], [4, 5], [0, 9], [9, 10], [10, 1
                  [12, 13], [13, 14]]
 
 
-def save_frames(predictions, data, gt_dir, pcls_min=None, pcls_max=None, numJoints=29, num=None, fill=6,
+def save_frames(predictions, data, gt_dir, numJoints=29, num=None, fill=6,
                 noaxes=False, gt=False):
     azim_min = -160
     azim_max = 200
@@ -26,10 +26,10 @@ def save_frames(predictions, data, gt_dir, pcls_min=None, pcls_max=None, numJoin
     azim = (azim_max - azim_min) / len(num)
     elev = 12.
     if data in ['CMU', 'ITOP']:
-        pcls_gt = data_loader.unscale_to_cm(gt_dir, data=data)
+        pcls_gt = data_loader.unscale_to_cm(gt_dir)
         pcls_gt -= pcls_gt.mean(axis=(0, 1))
         predictions = predictions.reshape((predictions.shape[0], numJoints, 3))
-        predictions = data_loader.unscale_to_cm(predictions, data=data)
+        predictions = data_loader.unscale_to_cm(predictions)
         for i in num:
             visualize_3D(pcls_gt[i], pose=predictions[i], title='', noaxes=noaxes, save_fig=True,
                          name=str(i).zfill(6), azim=azim_min + (azim * (i + 1)), elev=elev, gt=gt, pause=False)
@@ -64,15 +64,11 @@ def visualize_3D(coords, pause=True, array=False, regions=None, pose=None,
     ax = fig.add_subplot(111, projection='3d')
     ax.text2D(0.05, 0.95, title, transform=ax.transAxes)
     if array:
-        # x = coords[:, :, 0]
-        # y = coords[:, :, 1]
-        # z = coords[:, :, 2]
         coords = np.reshape(coords, (coords.shape[0], 3))
-        # else:
-    if coords is not None:
-        x = coords[:, 0]
-        y = coords[:, 1]
-        z = coords[:, 2]
+
+    x = coords[:, 0]
+    y = coords[:, 1]
+    z = coords[:, 2]
 
     if pose is not None:
         pose = np.reshape(pose, (config.numJoints, 3))
@@ -81,19 +77,13 @@ def visualize_3D(coords, pause=True, array=False, regions=None, pose=None,
         gt = np.reshape(gt, (config.numJoints, 3))
         ax.scatter(gt[:, 0], gt[:, 2], gt[:, 1], c='green', marker='o', s=ms1)
     if regions is not None:
-        # C = np.stack([regions] * 3,
-        #              axis=-1)  # shape = (numPoints, 1)  (number of corresponding joint representing the region)
-        # C = np.reshape(C, (regions.shape[0], 3))
-        C = np.zeros((regions.shape[0], 3))
+        c = np.zeros((regions.shape[0], 3))
         for j in range(config.numRegions):
-            #     C[C == [j, j, j]] = (j * 7)
             color = np.random.randint(256, size=3)
             for reg in range(regions.shape[0]):
-                # if np.array_equal(C[a], [j, j, j]):
                 if regions[reg] == j:
-                    # C[a] = color
-                    C[reg] = color
-        ax.scatter(x, z, y, c=C / 255.0, marker='o', s=3)
+                    c[reg] = color
+        ax.scatter(x, z, y, c=c / 255.0, marker='o', s=3)
     elif coords is not None:
         ax.scatter(x, z, y, c='blue', marker='o', s=ms2)
     ax.set_xlabel('x axis')
@@ -104,8 +94,8 @@ def visualize_3D(coords, pause=True, array=False, regions=None, pose=None,
 
     # Fix aspect ratio
     if coords is not None:
-        max_range = np.array([x.max() - x.min(), y.max() - y.min(),
-                              z.max() - z.min()]).max() / 2.0
+        max_range = np.max(np.array([x.max() - x.min(), y.max() - y.min(),
+                                     z.max() - z.min()])) / 2.0
         mean_x = x.mean()
         mean_z = y.mean()
         mean_y = z.mean()
@@ -116,8 +106,8 @@ def visualize_3D(coords, pause=True, array=False, regions=None, pose=None,
         x = pose[:, 0]
         y = pose[:, 1]
         z = pose[:, 2]
-        max_range = np.array([x.max() - x.min(), y.max() - y.min(),
-                              z.max() - z.min()]).max() / 2.0
+        max_range = np.max(np.array([x.max() - x.min(), y.max() - y.min(),
+                                     z.max() - z.min()])) / 2.0
         mean_x = x.mean()
         mean_z = y.mean()
         mean_y = z.mean()
@@ -188,8 +178,8 @@ def visualize_3D_pose(pose, pause=True,
         plt.axis('off')
 
     # Fix aspect ratio
-    max_range = np.array([pose[:, 0].max() - pose[:, 0].min(), pose[:, 1].max() - pose[:, 1].min(),
-                          pose[:, 2].max() - pose[:, 2].min()]).max() / 2.0
+    max_range = np.max(np.array([pose[:, 0].max() - pose[:, 0].min(), pose[:, 1].max() - pose[:, 1].min(),
+                                 pose[:, 2].max() - pose[:, 2].min()])) / 2.0
     mean_x = pose[:, 0].mean()
     mean_z = pose[:, 1].mean()
     mean_y = pose[:, 2].mean()
@@ -217,15 +207,14 @@ def visualize_3D_pose(pose, pause=True,
 
 
 if __name__ == "__main__":
-    poses_min, poses_max = np.load('data/MHAD/train/poses_minmaxSW.npy')
-    pcls_min, pcls_max = np.load('data/MHAD/train/pcls_minmaxSW_11subs12.npy')
-    pcl = np.load('data/MHAD/train/scaledpclglobalSW_11subs12batches/004011.npy')[15]
+    poses_min, poses_max = np.load('data/MHAD/train/poses_minmaxSV.npy')
+    pcls_min, pcls_max = np.load('data/MHAD/train/pcls_minmaxSV_11subs12.npy')
+    pcl = np.load('data/MHAD/train/scaledpclsSV_11subs12batch/004011.npy')[15]
     pcl = pcl.reshape((2048, 3))
     pcl = (pcl + 1) * (pcls_max - pcls_min) / 2 + pcls_min
-    reg = np.load('data/MHAD/train/regionSW35j_11subs12batches/004011.npy')[15]
-    pose = np.load('data/MHAD/train/posesglobalseparateSW35j_11subs12batches/004011.npy')[15]
+    reg = np.load('data/MHAD/train/regionSV35j_11subs12batch/004011.npy')[15]
+    pose = np.load('data/MHAD/train/scaledposesSV35j_11subs12batch/004011.npy')[15]
     pose = pose.reshape((35, 3))
     pose = (pose + 1) * (poses_max - poses_min) / 2 + poses_min
-    # # visualize_3D(coords=pcl, regions=reg, ms2=1, azim=-32, elev=11, title='')
-    # visualize_3D_pose(pose)
+
     visualize_3D(coords=pcl, pose=pose, ms2=1, azim=-32, elev=11, title='')
