@@ -41,7 +41,7 @@ def mean_avg_precision(y_true, y_pred):
 
     logic = Kb.less_equal(dist, thresh)
 
-    res = Kb.SVitch(logic, Kb.ones_like(dist), Kb.zeros_like(dist))
+    res = Kb.switch(logic, Kb.ones_like(dist), Kb.zeros_like(dist))
 
     return Kb.mean(Kb.mean(res, axis=-1), axis=-1)
 
@@ -54,7 +54,7 @@ def huber_loss(y_true, y_pred):
     squared_loss = 0.5 * Kb.square(error)
     linear_loss = clip_delta * (Kb.abs(error) - 0.5 * clip_delta)
 
-    return Kb.mean(Kb.SVitch(cond, squared_loss, linear_loss), axis=-1)
+    return Kb.mean(Kb.switch(cond, squared_loss, linear_loss), axis=-1)
 
 
 def per_joint_err(preds, gt, save=False):
@@ -68,4 +68,3 @@ def per_joint_err(preds, gt, save=False):
     if save:
         np.savetxt('data/' + dataset + '/test/per_joint_err_' + ('SV' if singleview else 'MV') + (
             '_35j' if numJoints == 35 else '') + '.csv', diff, delimiter=',')
-

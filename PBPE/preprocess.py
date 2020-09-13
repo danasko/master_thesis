@@ -4,6 +4,7 @@ import visualizer
 from sklearn.cluster import KMeans
 import random
 import rpy2
+
 # print(rpy2.__version__)
 # from rpy2.robjects.packages import importr
 # rdist = importr('rdist')
@@ -85,16 +86,23 @@ def subsample(pcl, numPoints, regions=None):
     p = np.random.randint(pcl.shape[0])
     farthest_pts[0] = pcl[p]
 
+    if regions is not None:
+        newregions = np.empty((numPoints, 1), dtype=np.int)
+        newregions[0] = regions[p]
+
     distances = calc_distances(farthest_pts[0], pcl)
 
     for i in range(1, numPoints):
         farthest_pts[i] = pcl[np.argmax(distances)]
-        # if regions is not None:
-        #     newregions[i] = regions[np.argmax(distances)]
+        if regions is not None:
+            newregions[i] = regions[np.argmax(distances)]
 
         distances = np.minimum(distances, calc_distances(farthest_pts[i], pcl))
 
-    return farthest_pts  # , pcls_min, pcls_max
+    if regions is not None:
+        return farthest_pts, newregions  # , pcls_min, pcls_max
+    else:
+        return farthest_pts
 
 
 def region_mapping(regionPartition):  # shape (n, 3)

@@ -676,6 +676,8 @@ def unscale_to_cm(pose):
         [poses_min, poses_max] = np.load('data/' + dataset + '/train/poses_minmax_11subs' + str(leaveout) + '.npy')
     elif singleview:
         [poses_min, poses_max] = np.load('data/' + dataset + '/train/poses_minmaxSV.npy')
+    elif ordered:
+        [poses_min, poses_max] = np.load('data/' + dataset + '/train/ordered/poses_minmax.npy')
     else:
         [poses_min, poses_max] = np.load('data/' + dataset + '/train/poses_minmax.npy')
 
@@ -748,6 +750,107 @@ def scale_CMU(mode='train'):
     np.save('data/CMU/' + mode + '/scaled_poses.npy', poses)
 
 
+# temporal convs
+
+def order_dataset():
+    '''order dataset to form original sequences (predict on SGPE model to obtain train data for temporal convs)'''
+    if dataset == 'CMU':
+        train_pcls = np.empty((0, numPoints, 3))
+        train_poses = np.empty((0, numJoints, 3))
+        test_pcls = np.empty((0, numPoints, 3))
+        test_poses = np.empty((0, numJoints, 3))
+
+        for i, seq in enumerate(os.listdir('data/CMU/train/pcls_poses/')):
+            arr = np.load('data/CMU/train/pcls_poses/' + seq, allow_pickle=True)
+            pcls = arr[:, 0]
+            poses = arr[:, 1]
+
+            pcls = np.reshape(np.asarray([np.concatenate(i, axis=0) for i in pcls]), (pcls.shape[0], numPoints, 3))
+            poses = np.reshape(np.asarray([np.concatenate(i, axis=0) for i in poses]), (poses.shape[0], numJoints, 3))
+            print(i, seq, poses.shape)
+
+            if i < 6:  # train data
+                train_pcls = np.concatenate([train_pcls, pcls])
+                train_poses = np.concatenate([train_poses, poses])
+            else:  # test data
+                test_pcls = np.concatenate([test_pcls, pcls])
+                test_poses = np.concatenate([test_poses, poses])
+
+        # for p in range(train_poses.shape[0]):
+        #     train_poses[p] -= train_pcls[p].mean(axis=0)
+        #     train_pcls[p] -= train_pcls[p].mean(axis=0)
+        #
+        # for p in range(test_poses.shape[0]):
+        #     test_poses[p] -= test_pcls[p].mean(axis=0)
+        #     test_pcls[p] -= test_pcls[p].mean(axis=0)
+        #
+        # pcls_min, pcls_max = [np.min(train_pcls, axis=(0, 1)), np.max(train_pcls, axis=(0, 1))]
+        # # poses_min, poses_max = [np.min(poses, axis=(0, 1)), np.max(poses, axis=(0, 1))]
+        #
+        # np.save('data/CMU/train/ordered/pcls_minmax.npy', [pcls_min, pcls_max])
+        # np.save('data/CMU/train/ordered/poses_minmax.npy', [pcls_min, pcls_max])
+        #
+        # train_pcls = 2 * (train_pcls - pcls_min) / (pcls_max - pcls_min) - 1
+        # train_poses = 2 * (train_poses - pcls_min) / (pcls_max - pcls_min) - 1
+        #
+        # np.save('data/CMU/train/ordered/scaled_pcls_lzeromean.npy', train_pcls)
+        # np.save('data/CMU/train/ordered/scaled_poses_lzeromean.npy', train_poses)
+        #
+        # test_pcls = 2 * (test_pcls - pcls_min) / (pcls_max - pcls_min) - 1
+        # test_poses = 2 * (test_poses - pcls_min) / (pcls_max - pcls_min) - 1
+        #
+        # np.save('data/CMU/test/ordered/scaled_pcls_lzeromean.npy', test_pcls)
+        # np.save('data/CMU/test/ordered/scaled_poses_lzeromean.npy', test_poses)
+
+
+def generate_sequences(save=True):
+    if dataset == 'CMU':
+        # save GT sequences for temp conv model
+        poses = np.load('data/CMU/train/ordered/scaled_poses_lzeromean.npy', allow_pickle=True)
+
+        num_sequences = poses.shape[0] // seq_length
+        poses = poses[:num_sequences * seq_length]
+
+        poses = poses.reshape((num_sequences, seq_length, numJoints * 3))
+        if save:
+            np.save('data/CMU/train/ordered/scaled_poses_lzeromean_seq.npy', poses)
+
+        # save predicted sequences
+        preds = np.load('data/CMU/train/ordered/predictions.npy', allow_pickle=True)
+
+        num_sequences = preds.shape[0] // seq_length
+        preds = preds[:num_sequences * seq_length]
+
+        preds = preds.reshape((num_sequences, seq_length, numJoints * 3))
+        if save:
+            np.save('data/CMU/train/ordered/preds_seq.npy', preds)
+
+
+def subsample_data():
+    if dataset == 'CMU':
+        train_pcls = np.load('data/CMU/train/ordered/scaled_pcls_lzeromean_2048pts.npy', allow_pickle=True)
+        test_pcls = np.load('data/CMU/test/ordered/scaled_pcls_lzeromean_2048pts.npy', allow_pickle=True)
+        # train_regions = np.load('data/CMU/train/regions_2048pts.npy', allow_pickle=True)
+        # test_regions = np.load('data/CMU/test/regions_2048pts.npy', allow_pickle=True)
+
+        train_pcls_new = np.empty((train_pcls.shape[0], numPoints, 3))
+        test_pcls_new = np.empty((test_pcls.shape[0], numPoints, 3))
+        # train_regions_new = np.empty((train_pcls.shape[0], numPoints, 1))
+        # test_regions_new = np.empty((test_pcls.shape[0], numPoints, 1))
+
+        for i, pcl in enumerate(train_pcls):
+            # train_pcls_new[i], train_regions_new[i] = subsample(pcl, numPoints, train_regions[i])
+            train_pcls_new[i] = subsample(pcl, numPoints)
+        np.save('data/CMU/train/ordered/scaled_pcls_lzeromean_' + str(numPoints) + 'pts.npy', train_pcls_new)
+        # np.save('data/CMU/train/regions_' + str(numPoints) + 'pts.npy', train_regions_new)
+
+        for i, pcl in enumerate(test_pcls):
+            # test_pcls_new[i], test_regions_new[i] = subsample(pcl, numPoints, test_regions[i])
+            test_pcls_new[i] = subsample(pcl, numPoints)
+        np.save('data/CMU/test/ordered/scaled_pcls_lzeromean_' + str(numPoints) + 'pts.npy', test_pcls_new)
+        # np.save('data/CMU/test/regions_' + str(numPoints) + 'pts.npy', test_regions_new)
+
+
 if __name__ == "__main__":
     # CMU_to_npy('171204_pose5')
     # CMU_to_npy('171204_pose6')
@@ -770,4 +873,6 @@ if __name__ == "__main__":
     # scale(mode='test', data=dataset)
     # make_batch_files(mode='train')
 
-    pass
+    # order_dataset()
+    subsample_data()
+    # pass

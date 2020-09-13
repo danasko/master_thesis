@@ -1,22 +1,35 @@
-dataset = 'UBC'
+dataset = 'CMU'
 batch_size = 32
 thresh = 10  # in cm
-numPoints = 2048  # number of points per pcl
+numPoints = 512  # number of points per pcl #2048
 singleview = False
 # test_method = '11subjects'
 test_method = 'random25'
 leaveout = 12
 
 # do NOT set both to True at once
-sgpe_seg = True
+sgpe_seg = False
 sgpe_reg = False
+
+temp_convs = False
+pcl_temp_convs = True
 
 stepss = None
 
-run_training = False
+run_training = True
 predict_on_segnet = False
+load_trained_model = False
 
 assert not sgpe_seg or not sgpe_reg
+
+# Temporal Convolutions
+ordered = True  # whether to use ordered version of *CMU* dataset (subsequent frames)
+seq_length = 81  # TODO skusit iny pocet framov # 243, 81, 27, 9
+tensor_slices = [73, 55, 1]  # [235, 217, 163, 1] [73, 55, 1] [19, 1], [1]
+W = 3  # TODO skusit ine okno v case
+C = 2048  # 1024
+p = 0.2  # 0.25
+###
 
 if dataset == 'MHAD':
     poolTo1 = True
@@ -57,7 +70,7 @@ elif dataset == 'ITOP':
     numJoints = 15
     numRegions = 15
     fill = 6
-else:  # 'CMU'
+elif dataset == 'CMU':
     poolTo1 = False
     globalAvg = True
     numTrainSamples = 112596
@@ -67,18 +80,31 @@ else:  # 'CMU'
     numJoints = 15
     numRegions = 15
     fill = 6
+else:  # AMASS virtual dataset
+    poolTo1 = False
+    globalAvg = True
+
+    numJoints = 13
+    numRegions = 13
+    fill = 7
 
 st = '_4000steps' if stepss is not None else ''
 view = 'SV_' if singleview else ''
 jts = '35j' if numJoints == 35 else ''
 if sgpe_seg:
     name = view + ('11subs' + str(leaveout) + '_' if (
-            dataset == 'MHAD' and test_method == '11subjects') else '') + jts + 'segnet' + st
+            dataset == 'MHAD' and test_method == '11subjects') else '') + jts + 'segnet_' + str(numPoints) + 'pts' + st
 elif sgpe_reg:
     name = view + ('11subs' + str(leaveout) + '_' if (
-            dataset == 'MHAD' and test_method == '11subjects') else '') + jts + 'sgpe_reg'
+            dataset == 'MHAD' and test_method == '11subjects') else '') + jts + 'sgpe_reg_' + str(numPoints) + 'pts'
     # 'poolto1' if poolTo1 else 'nomaxpool') + (
     # '_globalavgpool' if globalAvg else '')
+elif temp_convs or pcl_temp_convs:
+    pcl = ''
+    if pcl_temp_convs:
+        pcl = 'pcl_'
+    name = pcl + 'temp_convs_seq' + str(seq_length) + '_' + str(len(tensor_slices)) + 'blocks_W' + str(W) + '_C' + str(
+        C) + '_p' + str(p) + '_reset_seqs_nobatchnorm_lrdrop0.8_wo1x1convs_lr0.00005'
 else:
     name = view + ('11subs' + str(leaveout) + '_' if (
             dataset == 'MHAD' and test_method == '11subjects') else '') + jts + 'net_PBPE_new'

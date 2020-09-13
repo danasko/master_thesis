@@ -207,14 +207,15 @@ def visualize_3D_pose(pose, pause=True,
 
 
 if __name__ == "__main__":
-    poses_min, poses_max = np.load('data/MHAD/train/poses_minmaxSV.npy')
-    pcls_min, pcls_max = np.load('data/MHAD/train/pcls_minmaxSV_11subs12.npy')
-    pcl = np.load('data/MHAD/train/scaledpclsSV_11subs12batch/004011.npy')[15]
+    poses_min, poses_max = np.load('data/CMU/train/poses_minmax.npy')
+    pcls_min, pcls_max = np.load('data/CMU/train/pcls_minmax.npy')
+    pcl = np.load('data/CMU/test/scaledpcls.npy')
     pcl = pcl.reshape((2048, 3))
     pcl = (pcl + 1) * (pcls_max - pcls_min) / 2 + pcls_min
-    reg = np.load('data/MHAD/train/regionSV35j_11subs12batch/004011.npy')[15]
-    pose = np.load('data/MHAD/train/scaledposesSV35j_11subs12batch/004011.npy')[15]
-    pose = pose.reshape((35, 3))
+    # reg = np.load('data/MHAD/train/region/004011.npy')[15]
+    # pose = np.load('data/MHAD/train/scaledposesbatch/004011.npy')[15]
+    pose = np.load('data/CMU/test/predictions.npy')[2]
+    pose = pose.reshape((config.numJoints, 3))
     pose = (pose + 1) * (poses_max - poses_min) / 2 + poses_min
 
-    visualize_3D(coords=pcl, pose=pose, ms2=1, azim=-32, elev=11, title='')
+    visualize_3D(coords=pcl, pose=pose, ms2=0.5, azim=-32, elev=11, title='')
