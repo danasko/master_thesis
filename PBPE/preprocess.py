@@ -2,6 +2,8 @@ import numpy as np
 from scipy.spatial import distance
 import visualizer
 from sklearn.cluster import KMeans
+from skimage.measure import LineModelND, ransac
+import pandas as pd
 import random
 import rpy2
 
@@ -103,6 +105,12 @@ def subsample(pcl, numPoints, regions=None):
         return farthest_pts, newregions  # , pcls_min, pcls_max
     else:
         return farthest_pts
+
+
+def remove_floor(pcl):
+    t = 25  # vertical axis threshold
+    res = pcl[pcl[:, 1] > t]
+    return res
 
 
 def region_mapping(regionPartition):  # shape (n, 3)
