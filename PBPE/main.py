@@ -1,5 +1,5 @@
 from keras.models import load_model
-from keras.optimizers import Adam
+from keras.optimizers import Adam, SGD
 from keras.callbacks import LearningRateScheduler
 from keras.backend.tensorflow_backend import set_session
 from keras.utils import plot_model, HDF5Matrix, CustomObjectScope
@@ -8,16 +8,17 @@ import keras.callbacks
 from sklearn.utils import shuffle
 import time
 
-import wandb
+# import wandb
 from wandb.keras import WandbCallback
 
-wandb.init(project="automatic-3d-human-pose-estimation-skeleton-tracking-and-body-measurements")
+# wandb.init(project="automatic-3d-human-pose-estimation-skeleton-tracking-and-body-measurements")
 
 from models import *
 from metrics import *
 from visualizer import *
 from data_generator import *
 from data_generator_seq import *
+from data_generator_lstm import *
 from data_loader import *
 from config import *
 from ITOP_data_loader import load_ITOP_from_npy
@@ -86,7 +87,7 @@ def run_sgpe_seg(generator, x, mode='test', save=True):
             pred = np.concatenate([pred1, pred2], axis=0)
             pred = np.expand_dims(pred, -1)
             if save:
-                if ordered:
+                if (temp_convs or pcl_temp_convs) and ordered:
                     np.save('data/' + dataset + '/' + mode + '/ordered/predicted_regs' + view + jts + subs + str(
                         numPoints) + 'pts.npy', pred)
                 else:
@@ -109,6 +110,53 @@ def run_sgpe_seg(generator, x, mode='test', save=True):
         return pred
 
 
+def predict_sequence(enc_input):
+    decoder_input = np.zeros([batch_size, 1, numJoints * 3])  # start tag # TODO try ones instead - also while training
+    states = encoder_model.predict(enc_input)
+    out_seq = np.empty([batch_size, seq_length, numJoints * 3])
+    for j in range(seq_length):
+        decoder_output, h, c = decoder_model.predict([decoder_input] + states)
+        out_seq[:, j, :] = decoder_output[:, 0, :]
+        states = [h, c]
+        decoder_input = decoder_output
+
+    return out_seq
+
+
+def lstm_inference():
+    # TODO predikovat postupne sekvencie pcls z test set, decoder input bude vzdy po jednom predosly decoder output (pre 1. frame zeros)
+    res = 0
+    num_batches = len(test_generator_lstm)
+    # test_err = model.evaluate_generator(test_generator_lstm, verbose=1)
+    # print(test_err)
+
+    for i in range(num_batches):
+        [x_test, _], y_test = test_generator_lstm[i]
+        # out_seq = model.predict([x_test, dec_input])
+        out_seq = predict_sequence(x_test)
+
+        err = Kb.eval(avg_error_lstm(Kb.constant(y_test), Kb.constant(out_seq)))
+        print(err)
+        res += err
+
+        # print('avg error so far: ', res / (i + 1))
+
+    print('avg error: ', res / num_batches)
+    return res / num_batches
+
+
+def cos_step_decay(epoch):
+    initial_lr = 0.0005
+    if temp_dgcnn or lstm:
+        initial_lr = 0.0001
+    clip = 0.00001
+    lrate = 0.5 * initial_lr * (
+            1 + np.cos(np.pi * epoch / float(num_eps)))
+    if lrate < clip:
+        lrate = clip
+    return lrate
+
+
 def step_decay(epoch):
     """ learning rate schedule """
     if sgpe_reg and dataset == 'ITOP':
@@ -118,7 +166,9 @@ def step_decay(epoch):
     elif pcl_temp_convs:
         initial_lrate = 0.00005
     elif temp_convs:
-        initial_lrate = 0.00005  # TODO try higher lr
+        initial_lrate = 0.0001
+    elif temp_dgcnn:
+        initial_lrate = 0.0001
     else:
         initial_lrate = 0.0005
     drop = 0.8
@@ -139,7 +189,9 @@ if __name__ == "__main__":
     set_session(sess)  # set this TensorFlow session as the default session for Keras
 
     Adam = Adam(lr=0.0, decay=0.0,
-                amsgrad=(temp_convs or pcl_temp_convs))  # to be set in lrScheduler # TODO try w/o amsgrad
+                amsgrad=(temp_convs or pcl_temp_convs))  # to be set in lrScheduler # TODO try dgcnn with amsgrad
+    # SGD = SGD(0.1, momentum=.9)
+
     if sgpe_seg:
         model = SGPE_segnet()
         metrics = ['accuracy']
@@ -157,7 +209,42 @@ if __name__ == "__main__":
         losSV = [1.]
     elif temp_convs:
         model = TempConv()
+        metrics = [temporal_avg_error, temporal_mean_avg_precision]
+        if temporal_loss:
+            # lossf = temporal_huber_loss
+            lossf = temporal_mae_loss
+        else:
+            lossf = 'mean_absolute_error'
+        losSV = [1.]
+    elif temp_dgcnn:
+        model = temp_dgcnnet()
+        metrics = [temporal_avg_error, temporal_mean_avg_precision]
+        if temporal_loss:
+            lossf = temporal_mae_loss
+        else:
+            lossf = 'mean_absolute_error'
+        losSV = [1.]
+    elif dgcnn:
+        model = dgcnnet()
         metrics = [avg_error, mean_avg_precision]
+        lossf = 'mean_absolute_error'
+        losSV = [1.]
+    elif graph_sgpe:
+        model = graph_SGPE()
+        metrics = [avg_error, mean_avg_precision]
+        lossf = 'mean_absolute_error'
+        losSV = [1.]
+    elif temp_graph_sgpe:
+        model = temp_graph_SGPE()
+        metrics = [temporal_avg_error, temporal_mean_avg_precision]
+        if temporal_loss:
+            lossf = temporal_mae_loss
+        else:
+            lossf = 'mean_absolute_error'
+        losSV = [1.]
+    elif lstm:
+        model, encoder_model, decoder_model = define_lstm_models(n_units)
+        metrics = [avg_error_lstm, mean_avg_precision_lstm]
         lossf = 'mean_absolute_error'
         losSV = [1.]
     else:
@@ -170,10 +257,14 @@ if __name__ == "__main__":
         test_model.compile(optimizer=Adam,
                            loss="mean_absolute_error", metrics=[avg_error, mean_avg_precision])
 
-    model.summary(line_length=100)
+    model.summary(line_length=200)
 
     get_custom_objects().update(
-        {'avg_error': avg_error, 'Kb': Kb, 'mean_avg_precision': mean_avg_precision})
+        {'avg_error': avg_error, 'Kb': Kb, 'mean_avg_precision': mean_avg_precision,
+         'temporal_huber_loss': temporal_huber_loss, 'temporal_mae_loss': temporal_mae_loss,
+         'temporal_avg_error': temporal_avg_error,
+         'temporal_mean_avg_precision': temporal_mean_avg_precision, 'avg_error_lstm': avg_error_lstm,
+         'mean_avg_precision_lstm': mean_avg_precision_lstm})
     #  'loss_func_proto': loss_func_proto,'avg_error_proto': avg_error_proto, 'huber_loss': huber_loss
 
     model.compile(optimizer=Adam,
@@ -181,22 +272,34 @@ if __name__ == "__main__":
                   metrics=metrics)
 
     # Callbacks
-    lrate = LearningRateScheduler(step_decay)
+    lrate = LearningRateScheduler(cos_step_decay)  # TODO step_decay
 
     tbCallBack = keras.callbacks.TensorBoard(log_dir='data/tensorboard/' + dataset + '/' + name, histogram_freq=0,
                                              write_graph=True,
                                              write_images=True, write_grads=False, batch_size=batch_size)
 
-    checkpoint = keras.callbacks.ModelCheckpoint('data/models/' + dataset + '/{epoch:02d}eps_' + name + '.h5',
-                                                 verbose=1,
-                                                 period=10)
+    if dgcnn or graph_sgpe or temp_graph_sgpe:
+        checkpoint = keras.callbacks.ModelCheckpoint('data/models/' + dataset + '/{epoch:02d}eps_' + name + '.h5',
+                                                     verbose=1,
+                                                     period=10, save_weights_only=True)
+    else:
+        checkpoint = keras.callbacks.ModelCheckpoint('data/models/' + dataset + '/{epoch:02d}eps_' + name + '.h5',
+                                                     verbose=1,
+                                                     period=10)
 
-    callbacks_list = [lrate, tbCallBack, checkpoint, WandbCallback()]
+    callbacks_list = [lrate, tbCallBack, checkpoint]
 
     # Load trained model
     if load_trained_model:
-        model = load_model('data/models/' + dataset + '/30eps_' + name + '.h5')
-        if not sgpe_reg and not sgpe_seg and not (temp_convs or pcl_temp_convs):
+        if dgcnn or graph_sgpe:
+            model.load_weights('data/models/' + dataset + '/20eps_' + name + '.h5')
+        elif temp_convs:
+            model = load_model('data/models/' + dataset + '/80eps_' + name + '.h5')
+        elif lstm:
+            model = load_model('data/models/' + dataset + '/100eps_' + name + '.h5')
+        else:
+            model = load_model('data/models/' + dataset + '/10eps_' + name + '.h5')
+        if not (sgpe_seg or sgpe_reg or temp_convs or pcl_temp_convs or dgcnn or lstm):
             test_model = load_model(
                 'data/models/' + dataset + '/test_models/20eps_net_PBPE_new.h5')
 
@@ -216,7 +319,7 @@ if __name__ == "__main__":
         # print('Test avg error: ', testavg_err)
         preds = model.predict(test_x_exp, batch_size=batch_size)
         # np.save('data/ITOP/test/predictions.npy', preds)
-    elif dataset == 'CMU':
+    elif dataset == 'CMU':  # TODO refactor this spaghetti code !!
         if run_training:
             if pcl_temp_convs:
                 # load ordered train data
@@ -226,13 +329,46 @@ if __name__ == "__main__":
                 test_seqs_idx = [27082, 52288]
                 train_generator_seq = DataGeneratorSeq('data/CMU/train/ordered/', numJoints, train_seqs_idx, batch_size,
                                                        pcls=True)
-            elif temp_convs:
+                model.fit_generator(train_generator_seq, epochs=num_eps, callbacks=callbacks_list,
+                                    shuffle=False, initial_epoch=0, workers=workers)
+            elif temp_convs or temp_dgcnn or temp_graph_sgpe:
                 # load ordered train data
                 # x_train = np.load('data/CMU/train/ordered/preds_seq.npy', allow_pickle=True)
                 # y_train = np.load('data/CMU/train/ordered/scaled_poses_lzeromean.npy', allow_pickle=True)
                 train_seqs_idx = [21612, 35519, 42700, 69303, 79909, 88456]
+                train_generator_seq = DataGeneratorSeq('data/CMU/train/ordered/', numJoints, train_seqs_idx, batch_size,
+                                                       gt_sequence=temporal_loss, pcls=(temp_dgcnn or temp_graph_sgpe))
                 test_seqs_idx = [27082, 52288]
-                train_generator_seq = DataGeneratorSeq('data/CMU/train/ordered/', numJoints, train_seqs_idx, batch_size)
+                test_generator_seq = DataGeneratorSeq('data/CMU/test/ordered/', numJoints, test_seqs_idx, batch_size,
+                                                      gt_sequence=temporal_loss, pcls=(temp_dgcnn or temp_graph_sgpe))
+                model.fit_generator(train_generator_seq, epochs=num_eps, callbacks=callbacks_list,
+                                    shuffle=False, initial_epoch=0,
+                                    workers=workers)  # validation_data=test_generator_seq)
+            elif lstm:
+                train_seqs_idx = [21612, 35519, 42700, 69303, 79909, 88456]
+                train_generator_lstm = DataGeneratorLSTM('data/CMU/train/ordered/', numJoints, train_seqs_idx,
+                                                         batch_size)
+                test_seqs_idx = [27082, 52288]
+                test_generator_lstm = DataGeneratorLSTM('data/CMU/test/ordered/', numJoints, test_seqs_idx,
+                                                        batch_size)
+                test_generator_encoder = DataGeneratorLSTM('data/CMU/test/ordered/', numJoints, test_seqs_idx,
+                                                           batch_size, encoder=True)
+                model.fit_generator(train_generator_lstm, epochs=num_eps, callbacks=callbacks_list,
+                                    shuffle=False, initial_epoch=0, validation_data=test_generator_lstm)
+            elif dgcnn or graph_sgpe:
+                x_train = np.load('data/CMU/train/scaled_pcls_lzeromean_' + str(numPoints) + 'pts.npy',
+                                  allow_pickle=True)
+                y_train = np.load('data/CMU/train/scaled_poses_lzeromean.npy', allow_pickle=True)
+                y_train = y_train.reshape((-1, numJoints * 3))
+
+                x_test = np.load('data/CMU/test/scaled_pcls_lzeromean_' + str(numPoints) + 'pts.npy', allow_pickle=True)
+                y_test = np.load('data/CMU/test/scaled_poses_lzeromean.npy', allow_pickle=True)
+                y_test = y_test.reshape((-1, numJoints * 3))
+
+                model.fit(x_train, y_train, batch_size=batch_size,
+                          epochs=num_eps,
+                          callbacks=callbacks_list, shuffle=True, initial_epoch=0, validation_data=(x_test, y_test))
+
             else:
                 regs_train = np.load('data/CMU/train/regs_onehot_' + str(numPoints) + 'pts.npy', allow_pickle=True)
                 # regs_train = np.load('data/CMU/train/regions_' + str(numPoints) + 'pts.npy', allow_pickle=True).astype(
@@ -241,36 +377,34 @@ if __name__ == "__main__":
                                   allow_pickle=True)
                 x_train = np.expand_dims(x_train, axis=2)
                 y_train = np.load('data/CMU/train/scaled_poses_lzeromean.npy', allow_pickle=True)
-                y_train = y_train.reshape((y_train.shape[0], numJoints * 3))
+                y_train = y_train.reshape((-1, numJoints * 3))
                 # one-hot encoding
                 # regs_train = np.eye(numRegions, dtype=np.int)[regs_train]
                 # regs_train = regs_train.reshape((regs_train.shape[0], numPoints, 1, numRegions))
                 # np.save('data/CMU/train/regs_onehot_' + str(numPoints) + 'pts.npy', regs_train)
 
-            if sgpe_seg:
-                model.fit(x_train, regs_train, batch_size=batch_size,
-                          epochs=20,
-                          callbacks=callbacks_list,
-                          validation_split=0.2, shuffle=True, initial_epoch=0)
-            elif sgpe_reg:
-                if predict_on_segnet:
-                    regs_train_pred = run_sgpe_seg(None, x_train, mode='train', save=True)
-                else:
-                    regs_train_pred = np.load('data/CMU/train/predicted_regs_' + str(numPoints) + 'pts.npy',
-                                              allow_pickle=True).astype(np.int)
-                x_train = np.concatenate([x_train, regs_train_pred], axis=-1)
-                model.fit(x_train, y_train, batch_size=batch_size,
-                          epochs=20,
-                          callbacks=callbacks_list,
-                          validation_split=0.2, shuffle=True, initial_epoch=0)
-            elif temp_convs or pcl_temp_convs:
-                model.fit_generator(train_generator_seq, epochs=100, callbacks=callbacks_list,
-                                    shuffle=False, initial_epoch=0, workers=workers)
-            else:  # PBPE
-                model.fit(x_train, {'output1': y_train, 'output2': regs_train}, batch_size=batch_size,
-                          epochs=10,
-                          callbacks=callbacks_list,
-                          validation_split=0.2, shuffle=True, initial_epoch=0)
+                if sgpe_seg:
+                    model.fit(x_train, regs_train, batch_size=batch_size,
+                              epochs=num_eps,
+                              callbacks=callbacks_list,
+                              validation_split=0.2, shuffle=True, initial_epoch=0)
+                elif sgpe_reg:
+                    if predict_on_segnet:
+                        regs_train_pred = run_sgpe_seg(None, x_train, mode='train', save=True)
+                    else:
+                        regs_train_pred = np.load('data/CMU/train/predicted_regs_' + str(numPoints) + 'pts.npy',
+                                                  allow_pickle=True).astype(np.int)
+                    x_train = np.concatenate([x_train, regs_train_pred], axis=-1)
+                    model.fit(x_train, y_train, batch_size=batch_size,
+                              epochs=num_eps,
+                              callbacks=callbacks_list,
+                              validation_split=0.2, shuffle=True, initial_epoch=0)
+
+                else:  # PBPE
+                    model.fit(x_train, {'output1': y_train, 'output2': regs_train}, batch_size=batch_size,
+                              epochs=num_eps,
+                              callbacks=callbacks_list,
+                              validation_split=0.2, shuffle=True, initial_epoch=0)
         # load test data
         # x_test = np.load('data/CMU/test/scaled_pcls_lzeromean.npy', allow_pickle=True)
         # x_test = np.expand_dims(x_test, axis=2)
@@ -282,41 +416,81 @@ if __name__ == "__main__":
         # x_test = np.expand_dims(x_test, axis=2)
         # y_test = np.load('data/CMU/test/171204_pose6_scaledposes_lzeromean.npy', allow_pickle=True)
         # y_test = y_test.reshape((y_test.shape[0], numJoints * 3))
-
-        # load ordered test data
-        x_test = np.load('data/CMU/test/ordered/scaled_pcls_lzeromean.npy', allow_pickle=True)
-        x_test = np.expand_dims(x_test, axis=2)
-        y_test = np.load('data/CMU/test/ordered/scaled_poses_lzeromean.npy', allow_pickle=True)
-        y_test = y_test.reshape((y_test.shape[0], numJoints * 3))
-
-        if sgpe_seg:
-            regs_test = np.load('data/CMU/test/regions.npy', allow_pickle=True)
-            # regs_test = np.load('data/CMU/test/171204_pose6_regs.npy', allow_pickle=True)
-            regs_test = np.eye(numRegions, dtype=np.int)[regs_test]
-            regs_test = regs_test.reshape((regs_test.shape[0], numPoints, 1, numRegions))
-            test_metrics = model.evaluate(x_test, regs_test, batch_size=batch_size)
-        elif sgpe_reg:
-            if predict_on_segnet:
-                regs_test_pred = run_sgpe_seg(None, x_test, mode='test', save=True)
+        if load_trained_model:
+            # load ordered test data
+            if ordered:
+                ord = 'ordered/'
             else:
-                regs_test_pred = np.load('data/CMU/test/ordered/predicted_regs.npy', allow_pickle=True).astype(np.int)
-                # regs_test_pred = np.load('data/CMU/test/171204_pose6_predicted_regs.npy', allow_pickle=True).astype(np.int)
-            x_test = np.concatenate([x_test, regs_test_pred], axis=-1)
-            # test_metrics = model.evaluate(x_test, y_test, batch_size=batch_size)
-            # preds = model.predict(x_test, batch_size=batch_size, verbose=1)
+                ord = ''
+            x_test = np.load('data/CMU/test/' + ord + 'scaled_pcls_lzeromean_' + str(numPoints) + 'pts.npy',
+                             allow_pickle=True)
+            x_test = np.expand_dims(x_test, axis=2)
+            y_test = np.load('data/CMU/test/' + ord + 'scaled_poses_lzeromean.npy', allow_pickle=True)
+            y_test = y_test.reshape((y_test.shape[0], numJoints * 3))
 
-            # poses_min, poses_max = np.load('data/CMU/train/poses_minmax.npy')
-            # pcls_min, pcls_max = np.load('data/CMU/train/pcls_minmax.npy')
-            #
-            # pose = (preds[0] + 1) * (poses_max - poses_min) / 2 + poses_min
-            # pcl = x_test[0]
-            # pcl = (pcl + 1) * (pcls_max - pcls_min) / 2 + pcls_min
-            #
-            # visualize_3D(coords=pcl, pose=pose, ms2=0.5, azim=-32, elev=11, title='')
+            if sgpe_seg:
+                regs_test = np.load('data/CMU/test/' + ord + 'regions.npy', allow_pickle=True)
+                # regs_test = np.load('data/CMU/test/171204_pose6_regs.npy', allow_pickle=True)
+                regs_test = np.eye(numRegions, dtype=np.int)[regs_test]
+                regs_test = regs_test.reshape((regs_test.shape[0], numPoints, 1, numRegions))
+                test_metrics = model.evaluate(x_test, regs_test, batch_size=batch_size)
+            elif sgpe_reg:
+                if predict_on_segnet:
+                    regs_test_pred = run_sgpe_seg(None, x_test, mode='test', save=True)
+                else:
+                    regs_test_pred = np.load('data/CMU/test/' + ord + 'predicted_regs.npy', allow_pickle=True).astype(
+                        np.int)
+                    # regs_test_pred = np.load('data/CMU/test/171204_pose6_predicted_regs.npy', allow_pickle=True).astype(np.int)
+                x_test = np.concatenate([x_test, regs_test_pred], axis=-1)
+                # test_metrics = model.evaluate(x_test, y_test, batch_size=batch_size)
+                # preds = model.predict(x_test, batch_size=batch_size, verbose=1)
 
-            # np.save('data/CMU/test/ordered/predictions.npy', preds)
-        elif not (temp_convs or pcl_temp_convs):  # PBPE
-            test_metrics = test_model.evaluate(x_test, y_test, batch_size=batch_size)
+                # poses_min, poses_max = np.load('data/CMU/train/poses_minmax.npy')
+                # pcls_min, pcls_max = np.load('data/CMU/train/pcls_minmax.npy')
+                #
+                # pose = (preds[0] + 1) * (poses_max - poses_min) / 2 + poses_min
+                # pcl = x_test[0]
+                # pcl = (pcl + 1) * (pcls_max - pcls_min) / 2 + pcls_min
+                #
+                # visualize_3D(coords=pcl, pose=pose, ms2=0.5, azim=-32, elev=11, title='')
+
+                # np.save('data/CMU/test/ordered/predictions.npy', preds)
+            elif temp_convs:
+                # PE_pred_test = np.load('data/CMU/test/ordered/predictions.npy',
+                #                        allow_pickle=True)
+                test_seqs_idx = [27082, 52288]
+                test_generator_seq = DataGeneratorSeq('data/CMU/test/ordered/', numJoints, test_seqs_idx, batch_size,
+                                                      gt_sequence=temporal_loss)
+                test_metrics = model.evaluate_generator(test_generator_seq, verbose=1)
+                print('Temporal test loss: ', test_metrics[0])
+                print('Test mean error: ', test_metrics[1])
+                print('Test mAP@10cm: ', test_metrics[2])
+            elif dgcnn:
+                x_test = np.squeeze(x_test, axis=2)
+                # test_metrics = model.evaluate(x_test, y_test)
+                # print('Test loss: ', test_metrics[0])
+                # print('Test mean error: ', test_metrics[1])
+                # print('Test mAP@10cm: ', test_metrics[2])
+                get_output = Kb.function([model.layers[0].input, Kb.learning_phase()],
+                                         [model.layers[21].output])  # 13, 17
+                out = get_output([x_test[200:200 + batch_size], 0])[0]
+                adj_matrix = utils.pairwise_distance(out)
+                # TODO visualize all points with feature distance from ref. point
+                # nn_idx = utils.knn(adj_matrix, k_neighbors)
+                visualize_features(x_test[200:200 + batch_size], adj_matrix, rnd_point_idx=100)
+
+            elif lstm:
+                test_seqs_idx = [27082, 52288]
+                test_generator_encoder = DataGeneratorLSTM('data/CMU/test/ordered/', numJoints, test_seqs_idx,
+                                                           batch_size, encoder=True)
+                test_generator_decoder = DataGeneratorLSTM('data/CMU/test/ordered/', numJoints, test_seqs_idx,
+                                                           batch_size, decoder=True)
+                test_generator_lstm = DataGeneratorLSTM('data/CMU/test/ordered/', numJoints, test_seqs_idx,
+                                                        batch_size)
+                lstm_inference()
+
+            elif not (temp_convs or pcl_temp_convs):  # PBPE
+                test_metrics = test_model.evaluate(x_test, y_test, batch_size=batch_size)
     else:
         train_generator = DataGenerator('data/' + dataset + '/train/', numPoints, numJoints, numRegions, steps=stepss,
                                         batch_size=batch_size,
@@ -331,16 +505,23 @@ if __name__ == "__main__":
                                                 batch_size=batch_size, fill=fill, singleview=singleview,
                                                 shuffle=False, sgpe_seg=sgpe_seg, four_channels=sgpe_reg)
 
-        test_generator = DataGenerator('data/' + dataset + '/test/', numPoints, numJoints, numRegions, steps=stepss,
-                                       batch_size=batch_size, shuffle=False, fill=fill, singleview=singleview,
-                                       test=True, elevensubs=(test_method == '11subjects'), sgpe_seg=sgpe_seg,
-                                       four_channels=sgpe_reg, predicted_regs=predicted_regs, split=1)
+        if dataset == 'AMASS':
+            test_generator = DataGenerator('data/' + dataset + '/test/', numPoints, numJoints, numRegions, steps=stepss,
+                                           batch_size=batch_size, shuffle=False, fill=fill, singleview=singleview,
+                                           test=True, elevensubs=(test_method == '11subjects'), sgpe_seg=sgpe_seg,
+                                           four_channels=sgpe_reg, predicted_regs=predicted_regs, split=1,
+                                           loadbatch=True)
+        else:
+            test_generator = DataGenerator('data/' + dataset + '/test/', numPoints, numJoints, numRegions, steps=stepss,
+                                           batch_size=batch_size, shuffle=False, fill=fill, singleview=singleview,
+                                           test=True, elevensubs=(test_method == '11subjects'), sgpe_seg=sgpe_seg,
+                                           four_channels=sgpe_reg, predicted_regs=predicted_regs, split=1)
         if run_training:
-            model.fit_generator(generator=train_generator, epochs=20,
+            model.fit_generator(generator=train_generator, epochs=num_eps,
                                 callbacks=callbacks_list, initial_epoch=0, use_multiprocessing=True,
                                 workers=workers, shuffle=True, max_queue_size=0)
         if predict_on_segnet:
-            run_sgpe_seg(test_generator, None, 'test', True)
+            run_sgpe_seg(train_generator, None, 'train', True)
 
         # Evaluate model (only regression branch) ###########
         if load_trained_model:
@@ -357,7 +538,7 @@ if __name__ == "__main__":
     # test_model.save('data/models/' + dataset + '/test_models/' + name + '.h5')
 
     # Save model to wandb ##########
-    model.save(os.path.join(wandb.run.dir, name + ".h5"))
+    # model.save(os.path.join(wandb.run.dir, name + ".h5"))
 
     # Predict ###########
 

@@ -9,7 +9,7 @@ from config import seq_length, numPoints
 
 class DataGeneratorSeq(Sequence):
 
-    def __init__(self, path, numJoints, seq_idx, batch_size=32, pcls=False):
+    def __init__(self, path, numJoints, seq_idx, batch_size=32, pcls=False, gt_sequence=False):
         """
             path - directory of input data
             numJoints - num of joints in pose
@@ -21,9 +21,10 @@ class DataGeneratorSeq(Sequence):
         self.path = path
         self.seq_idx = seq_idx
         self.pcls = pcls
+        self.gt_sequence = gt_sequence
         if pcls:
             self.data = np.load(path + 'scaled_pcls_lzeromean_' + str(numPoints) + 'pts.npy',
-                                allow_pickle=True)  # TODO generate ordered pcls w 512pts
+                                allow_pickle=True)
         else:
             self.data = np.load(path + 'predictions.npy', allow_pickle=True)  # shape = (~88k, numJoints* 3)
         # rescale inputs and targets
@@ -73,20 +74,41 @@ class DataGeneratorSeq(Sequence):
         if self.pcls:
             x = np.zeros((self.batch_size, seq_length, numPoints * 3))
         else:
-            x = np.zeros((self.batch_size, seq_length, self.numJoints * 3))
-        y = np.zeros((self.batch_size, 1, self.numJoints * 3))
+            x = np.zeros((self.batch_size, seq_length, self.numJoints * 3), dtype=np.float64)
+        if self.gt_sequence:
+            y = np.zeros((self.batch_size, seq_length, self.numJoints * 3), dtype=np.float64)
+        else:
+            y = np.zeros((self.batch_size, 1, self.numJoints * 3))
+
         for bidx, i in enumerate(list_IDs_temp):  # 0:32; 32:64 ...
             if i == 0:
                 x[bidx, -1] = self.data[i]
-            elif i in self.seq_idx:
+                if self.gt_sequence:
+                    y[bidx, -1] = self.gt_data[i].flatten()
+            elif i in self.seq_idx and i != self.seq_idx[-1]:  # last id in seq_idx is last frame of the set
                 x[bidx, -1] = self.data[i]
+                if self.gt_sequence:
+                    y[bidx, -1] = self.gt_data[i].flatten()
                 self.curr_seq += 1
             elif i < seq_length:
-                x[bidx, -i:] = self.data[:i]
+                x[bidx, -i - 1:] = self.data[:i + 1]
+                if self.gt_sequence:
+                    y[bidx, -i - 1:] = self.gt_data[:i + 1].reshape((i + 1, -1))
             elif self.curr_seq > 0 and i < self.seq_idx[
                 self.curr_seq - 1] + seq_length:  # beginning of a new sequence -> reset frames
-                x[bidx, -(i - self.seq_idx[self.curr_seq]):] = self.data[self.seq_idx[self.curr_seq]:i]
+                x[bidx, -(i - self.seq_idx[self.curr_seq - 1] + 1):] = self.data[self.seq_idx[self.curr_seq - 1]:i + 1]
+                if self.gt_sequence:
+                    y[bidx, -(i - self.seq_idx[self.curr_seq - 1] + 1):] = self.gt_data[self.seq_idx[
+                                                                                            self.curr_seq - 1]:i + 1].reshape(
+                        (-1, self.numJoints * 3))
             else:
-                x[bidx] = self.data[i - seq_length:i]
-            y[bidx, 0] = self.gt_data[i].flatten()
+                x[bidx] = self.data[i + 1 - seq_length:i + 1]
+                if self.gt_sequence:
+                    y[bidx] = self.gt_data[i + 1 - seq_length:i + 1].reshape((-1, self.numJoints * 3))
+            if np.all(x[bidx, 0]) == 0:  # pad start frames by repeating first pose
+                first_pose_idx = (x[bidx] != 0).argmax(axis=0)[0]
+                x[bidx, :first_pose_idx] = x[bidx, first_pose_idx]
+
+            if not self.gt_sequence:
+                y[bidx, 0] = self.gt_data[i].flatten()
         return x, y

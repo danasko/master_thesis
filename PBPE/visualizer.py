@@ -16,6 +16,9 @@ MHAD_bone_list = [[0, 1], [1, 2], [2, 3], [3, 4], [4, 5], [5, 6], [3, 7], [7, 8]
 CMU_bone_list = [[0, 1], [0, 2], [0, 3], [3, 4], [4, 5], [0, 9], [9, 10], [10, 11], [2, 6], [6, 7], [7, 8], [2, 12],
                  [12, 13], [13, 14]]
 
+AMASS_bone_list = [[0, 1], [0, 2], [0, 3], [3, 6], [9, 13], [9, 6], [14, 9], [9, 12], [12, 15], [14, 17], [17, 19],
+                   [19, 21], [13, 16], [16, 18], [18, 20], [1, 4], [2, 5], [5, 8], [8, 11], [4, 7], [7, 10]]
+
 
 def save_frames(predictions, data, gt_dir, numJoints=29, num=None, fill=6,
                 noaxes=False, gt=False):
@@ -115,36 +118,26 @@ def visualize_3D(coords, pause=True, array=False, regions=None, pose=None,
         ax.set_ylim(mean_y + max_range, mean_y - max_range)
         ax.set_zlim(mean_z - max_range, mean_z + max_range)
 
-    if pose is not None:
-        if pose.shape[0] == 18:  # UBC dataset
-            for bone in UBC_bone_list:
-                ax.plot([pose[:, 0][bone[0]], pose[:, 0][bone[1]]],
-                        [pose[:, 2][bone[0]], pose[:, 2][bone[1]]], [pose[:, 1][bone[0]], pose[:, 1][bone[1]]],
-                        'magenta')
-        elif pose.shape[0] == 29:  # MHAD
-            for bone in MHAD_bone_list:
-                ax.plot([pose[:, 0][bone[0]], pose[:, 0][bone[1]]],
-                        [pose[:, 2][bone[0]], pose[:, 2][bone[1]]], [pose[:, 1][bone[0]], pose[:, 1][bone[1]]],
-                        'magenta')
+    bone_list = None
+    if pose is not None or gt is not None:
+        if config.dataset == 'UBC':
+            bone_list = UBC_bone_list
+        elif config.dataset == 'MHAD':
+            bone_list = MHAD_bone_list
         elif config.dataset == 'CMU':
-            for bone in CMU_bone_list:
+            bone_list = CMU_bone_list
+        elif config.dataset == 'AMASS':
+            bone_list = AMASS_bone_list
+
+    if bone_list is not None:
+        if pose is not None:
+            for bone in bone_list:
                 ax.plot([pose[:, 0][bone[0]], pose[:, 0][bone[1]]],
                         [pose[:, 2][bone[0]], pose[:, 2][bone[1]]], [pose[:, 1][bone[0]], pose[:, 1][bone[1]]],
                         'magenta')
 
-    if gt is not None:
-        if gt.shape[0] == 18:  # UBC dataset
-            for bone in UBC_bone_list:
-                ax.plot([gt[:, 0][bone[0]], gt[:, 0][bone[1]]],
-                        [gt[:, 2][bone[0]], gt[:, 2][bone[1]]], [gt[:, 1][bone[0]], gt[:, 1][bone[1]]],
-                        'green')
-        elif gt.shape[0] == 29:  # MHAD
-            for bone in MHAD_bone_list:
-                ax.plot([gt[:, 0][bone[0]], gt[:, 0][bone[1]]],
-                        [gt[:, 2][bone[0]], gt[:, 2][bone[1]]], [gt[:, 1][bone[0]], gt[:, 1][bone[1]]],
-                        'green')
-        elif config.dataset == 'CMU':
-            for bone in CMU_bone_list:
+        if gt is not None:
+            for bone in bone_list:
                 ax.plot([gt[:, 0][bone[0]], gt[:, 0][bone[1]]],
                         [gt[:, 2][bone[0]], gt[:, 2][bone[1]]], [gt[:, 1][bone[0]], gt[:, 1][bone[1]]],
                         'green')
@@ -168,7 +161,10 @@ def visualize_3D_pose(pose, pause=True,
     ax.text2D(0.05, 0.95, title, transform=ax.transAxes)
     if pose is not None:
         pose = np.reshape(pose, (config.numJoints, 3))
-        ax.scatter(pose[:, 0], pose[:, 2], pose[:, 1], c=color, marker='o')
+        ax.scatter(pose[:, 0], pose[:, 2], pose[:, 1], c=color, marker='o', )
+        # show node ID labels
+        # for node in range(pose.shape[0]):
+        #     ax.text(pose[node, 0] + .03, pose[node, 2] + .03, pose[node, 1] + .03, str(node), fontsize=9)
 
     ax.set_xlabel('x axis')
     ax.set_ylabel('z axis')
@@ -204,6 +200,51 @@ def visualize_3D_pose(pose, pause=True,
     if pause:
         plt.pause(0.001)
         input("Press [enter] to show next pose.")
+
+
+def visualize_features(pcl, nn_idx, rnd_point_idx=256, noaxes=True):
+    """ Args:
+       pcl: (batch_size, num_points, 3)
+       nn_idx: (batch_size, num_points, num_points)
+    """
+    for b in range(pcl.shape[0]):
+        fig = plt.figure()
+        ax = fig.add_subplot(111, projection='3d')
+        # ax.text2D(0.05, 0.95, title, transform=ax.transAxes)
+        coords = pcl[b]
+
+        x = coords[:, 0]
+        y = coords[:, 1]
+        z = coords[:, 2]
+
+        rnd_point = coords[rnd_point_idx]
+        ax.scatter(rnd_point[0], rnd_point[2], rnd_point[1], c='red', marker='o', s=20)
+        knn = Kb.eval(nn_idx[b, rnd_point_idx])
+        knn_ordered = np.argsort(knn)
+        ax.scatter(x[knn_ordered[1:]], z[knn_ordered[1:]], y[knn_ordered[1:]], c=-np.sort(knn)[1:], marker='o', s=20)
+
+        # ax.scatter(x, z, y, c='blue', marker='o', s=0.3)
+        ax.set_xlabel('x axis')
+        ax.set_ylabel('z axis')
+        ax.set_zlabel('y axis')
+
+        if noaxes:
+            plt.axis('off')
+
+        # Fix aspect ratio
+        if coords is not None:
+            max_range = np.max(np.array([x.max() - x.min(), y.max() - y.min(),
+                                         z.max() - z.min()])) / 2.0
+            mean_x = x.mean()
+            mean_z = y.mean()
+            mean_y = z.mean()
+            ax.set_xlim(mean_x - max_range, mean_x + max_range)
+            ax.set_ylim(mean_y + max_range, mean_y - max_range)
+            ax.set_zlim(mean_z - max_range, mean_z + max_range)
+
+        plt.show()
+        plt.pause(0.001)
+        input("Press [enter] to show next pcl.")
 
 
 if __name__ == "__main__":

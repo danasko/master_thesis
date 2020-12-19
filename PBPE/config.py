@@ -11,25 +11,66 @@ leaveout = 12
 sgpe_seg = False
 sgpe_reg = False
 
-temp_convs = False
-pcl_temp_convs = True
+temp_convs = 0
+pcl_temp_convs = 0
+dgcnn = 0
+temp_dgcnn = 0
+graph_sgpe = 0
+temp_graph_sgpe = 0
+lstm = 1
 
 stepss = None
+num_eps = 80
 
-run_training = True
-predict_on_segnet = False
-load_trained_model = False
+run_training = 1
+predict_on_segnet = 0
+load_trained_model = 0
 
 assert not sgpe_seg or not sgpe_reg
 
 # Temporal Convolutions
-ordered = True  # whether to use ordered version of *CMU* dataset (subsequent frames)
-seq_length = 81  # TODO skusit iny pocet framov # 243, 81, 27, 9
-tensor_slices = [73, 55, 1]  # [235, 217, 163, 1] [73, 55, 1] [19, 1], [1]
-W = 3  # TODO skusit ine okno v case
-C = 2048  # 1024
-p = 0.2  # 0.25
+if temp_convs or pcl_temp_convs:
+    ordered = True  # whether to use ordered version of *CMU* dataset (subsequent frames)
+    seq_length = 9  # 243, 81, 27, 9
+    tensor_slices = [1]  # [235, 217, 163, 1] [73, 55, 1] [19, 1], [1]
+    W = 3  # time window
+    C = 2048  # 1024
+    if pcl_temp_convs:
+        C = 512
+        seq_length = 27
+        tensor_slices = [19, 1]
+    p = 0.1  # 0.25
+    temporal_loss = True
+    temp_coeff = .25
 ###
+
+# DGCNN
+elif dgcnn:
+    k_neighbors = 20
+    temporal_loss = False
+    ordered = False
+    seq_length = 1
+###
+elif temp_dgcnn or temp_graph_sgpe:
+    ordered = True
+    k_neighbors = 20
+    seq_length = 5
+    temporal_loss = True
+    temp_coeff = .25
+elif graph_sgpe:
+    ordered = False
+    k_neighbors = 20
+    temporal_loss = False
+    seq_length = 1
+elif lstm:
+    n_units = 256  # TODO validate
+    ordered = True
+    seq_length = 32
+else:
+    temporal_loss = False
+    ordered = False
+    seq_length = 1
+    n_units = None
 
 if dataset == 'MHAD':
     poolTo1 = True
@@ -83,10 +124,12 @@ elif dataset == 'CMU':
 else:  # AMASS virtual dataset
     poolTo1 = False
     globalAvg = True
+    numTrainSamples = 80224
+    numTestSamples = 20032
 
-    numJoints = 13
-    numRegions = 13
-    fill = 7
+    numJoints = 22
+    numRegions = 22
+    fill = 6
 
 st = '_4000steps' if stepss is not None else ''
 view = 'SV_' if singleview else ''
@@ -103,8 +146,22 @@ elif temp_convs or pcl_temp_convs:
     pcl = ''
     if pcl_temp_convs:
         pcl = 'pcl_'
+    temp_loss = ''
+    if temporal_loss:
+        temp_loss = '_temp_mae_loss_coeff_' + str(temp_coeff) + '_err_from_whole_seq_smooth_c0.05'
     name = pcl + 'temp_convs_seq' + str(seq_length) + '_' + str(len(tensor_slices)) + 'blocks_W' + str(W) + '_C' + str(
-        C) + '_p' + str(p) + '_reset_seqs_nobatchnorm_lrdrop0.8_wo1x1convs_lr0.00005'
+        C) + '_p' + str(p) + '_reset_seqs_nobatchnorm_lrdrop0.8_wo1x1convs_lr0.0001_wofirstDO_leakyrelu' + temp_loss
+elif dgcnn:
+    name = 'dgcnn_knn' + str(k_neighbors) + '_PE_mlp256_256_128_6convblocks_cosdecay_concatall'
+elif temp_dgcnn:
+    name = 'dgcnn_knn' + str(k_neighbors) + '_seq' + str(
+        seq_length) + '_weightedsepbranches_v2_womaxpool_lr0.0001_orderedseq_cosdecay_wotransform_128convs'
+elif graph_sgpe:
+    name = 'graph_sgpe_knn' + str(k_neighbors) + '_3denses'
+elif temp_graph_sgpe:
+    name = 'temp_graph_sgpe_knn' + str(k_neighbors) + '_seq_length_' + str(seq_length) + '_3denses'
+elif lstm:
+    name = 'lstm_seq_length_' + str(seq_length) + '_' + str(n_units) + 'units_lr0.0001_tanh_recurrenttanh_Nonefirstdim'
 else:
     name = view + ('11subs' + str(leaveout) + '_' if (
             dataset == 'MHAD' and test_method == '11subjects') else '') + jts + 'net_PBPE_new'

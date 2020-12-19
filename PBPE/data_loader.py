@@ -682,7 +682,7 @@ def unscale_to_cm(pose):
         [poses_min, poses_max] = np.load('data/' + dataset + '/train/poses_minmax.npy')
 
     pose2 = (pose + 1) * (poses_max - poses_min) / 2 + poses_min
-    if dataset == 'MHAD':  # in mm
+    if dataset in ['MHAD','AMASS']:  # in mm
         pose2 *= 0.1
     elif dataset == 'ITOP':  # in m
         pose2 *= 100
